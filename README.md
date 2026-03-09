@@ -1,96 +1,197 @@
-**Veritas-Agent**: Privacy-First Agentic RAG Platform
-Veritas-Agent is a production-grade, "Agentic" Retrieval-Augmented Generation (RAG) system designed for high-accuracy document intelligence. Originally developed as a medical document analyzer, the platform utilizes a state-machine architecture to handle complex reasoning, ensuring that responses are grounded strictly in provided data.
+# Veritas-Agent
+**Privacy-First Agentic RAG Platform for Reliable Document Intelligence**
 
-To align with European data privacy standards (GDPR), the system employs local embedding generation and isolated vector storage, ensuring sensitive information remains within a controlled environment.
+Veritas-Agent is a production-oriented **Agentic Retrieval-Augmented Generation (RAG)** platform designed for **high-accuracy document analysis**. The system applies a **state-machine-based reasoning workflow** to ensure responses are generated strictly from retrieved evidence rather than hallucinated knowledge.
 
-🚀 **Core Features**
-Agentic Workflow: Built with LangGraph, the system uses a multi-node state machine to route queries, grade document relevance, and self-correct search parameters.
+Originally developed for **medical document analysis**, the platform emphasizes **data privacy, traceability, and reproducibility**, aligning with European data protection standards such as **GDPR**.
 
-Privacy-First Architecture: Utilizes local HuggingFace embeddings (all-MiniLM-L6-v2) to ensure data is vectorized on-device without external API transmission.
+---
 
-High-Performance Vector Retrieval: Integrated with Qdrant, leveraging its "query points" API for optimized semantic search.
+# Key Features
 
-Hybrid LLM Integration: Optimized for Groq (Llama 3.3 70B) for ultra-fast, cost-effective inference while maintaining an OpenAI-compatible interface.
+### Agentic Reasoning Workflow
+Built using **LangGraph**, the platform uses a structured state machine where retrieval is treated as an iterative reasoning step rather than a single database lookup.
 
-Containerized Orchestration: Full system deployment via Docker, ensuring reproducibility across development and production environments.
+### Privacy-First Architecture
+Document embeddings are generated locally using **SentenceTransformers (all-MiniLM-L6-v2)**, ensuring that sensitive documents are **never transmitted to external services**.
 
-🏗️ **Technical Architecture**
-Unlike standard linear RAG pipelines, Veritas-Agent operates on a cyclic graph that treats retrieval as a "reasoning step" rather than a one-time fetch.
+### High-Performance Vector Search
+Semantic search is powered by **Qdrant**, enabling efficient retrieval using its optimized **query points API**.
 
-The Router: Analyzes the intent of the user query to determine if a vector database search is required.
+### Fast LLM Inference
+Inference is handled through **Groq Cloud (Llama 3.3 70B)**, delivering low-latency responses while maintaining compatibility with OpenAI-style APIs.
 
-The Retriever: Performs semantic search in Qdrant and populates the agent's state with relevant context.
+### Reproducible Deployment
+The entire platform is containerized using **Docker and Docker Compose**, ensuring consistent environments for development and production.
 
-The Generator: Synthesizes a final response using a specialized system prompt that enforces strict grounding in the retrieved context.
+---
 
-🛠️ **Tech Stack**
-Backend: FastAPI (Python 3.10)
+# System Architecture
 
-AI Orchestration: LangGraph, LangChain
+Unlike traditional RAG pipelines that retrieve context once, **Veritas-Agent treats retrieval as part of the reasoning loop**.
 
-Vector Database: Qdrant (Deployed via Docker)
+The workflow consists of three primary components:
 
-Embeddings: Sentence-Transformers (Local)
+**Router**  
+Determines whether a user query requires document retrieval or can be answered directly.
 
-LLM Inference: Groq Cloud (Llama 3.3 70B)
+**Retriever**  
+Performs semantic search in the Qdrant vector database and populates the agent state with relevant document chunks.
 
-Frontend: Next.js 14, TypeScript, Tailwind CSS
+**Generator**  
+Uses the retrieved context to synthesize grounded responses while enforcing strict adherence to source information.
 
-DevOps: Docker, Docker Compose, GitHub Actions (CI/CD)
+This architecture improves reliability and reduces hallucination in domain-specific document analysis.
 
-🔧 **Installation & Local Setup**
-Follow these steps to recreate the environment and run the platform locally.
+---
 
-Prerequisites
-Docker and Docker Desktop
+# Technology Stack
 
-Python 3.10+
+**Backend**
+- Python 3.10
+- FastAPI
 
-Node.js 18+
+**AI Orchestration**
+- LangGraph
+- LangChain
 
-A Groq Cloud API Key
+**Vector Database**
+- Qdrant (Docker deployment)
 
-1. Clone the Repository
-Bash
+**Embeddings**
+- SentenceTransformers (local inference)
+
+**LLM Inference**
+- Groq Cloud (Llama 3.3 70B)
+
+**Frontend**
+- Next.js 14
+- TypeScript
+- Tailwind CSS
+
+**DevOps**
+- Docker
+- Docker Compose
+- GitHub Actions (CI/CD)
+
+---
+
+# Local Setup
+
+## Prerequisites
+- Docker / Docker Desktop
+- Python 3.10+
+- Node.js 18+
+- Groq Cloud API Key
+
+---
+
+## 1. Clone Repository
+
+```bash
 git clone https://github.com/negilbabu/veritas-agent.git
 cd veritas-agent
-2. Configure Environment Variables
-Create a .env file in the backend/ directory:
+```
 
-Plaintext
+---
+
+## 2. Configure Environment Variables
+
+Create a `.env` file in `backend/`:
+
+```
 QDRANT_HOST=localhost
 QDRANT_PORT=6333
-GROQ_API_KEY=your_groq_api_key_here
-3. Launch Infrastructure (Docker)
-Start the Qdrant vector database:
+GROQ_API_KEY=your_groq_api_key
+```
 
-Bash
+---
+
+## 3. Start Infrastructure
+
+```bash
 docker-compose up -d
-4. Setup Backend
-Bash
+```
+
+This launches the **Qdrant vector database**.
+
+---
+
+## 4. Backend Setup
+
+```bash
 cd backend
 python -m venv venv
-source venv/bin/scripts/activate  # On Windows use: .\venv\Scripts\activate
+.\venv\Scripts\activate
 pip install -r requirements.txt
 uvicorn app.main:app --reload
-5. Setup Frontend
-Bash
-cd ../frontend
+```
+
+Backend API will be available at:
+
+```
+http://localhost:8000
+```
+
+---
+
+## 5. Frontend Setup
+
+```bash
+cd frontend
 npm install
 npm run dev
-📖 **Usage Guide**
-Access the Dashboard: Open http://localhost:3000 in your browser.
+```
 
-Knowledge Ingestion: Use the "Upload" feature to process a PDF (e.g., a medical report). The system will split the document into recursive chunks and store them in Qdrant.
+Open:
 
-Querying: Ask questions about the document. The backend terminal will log the transition from research_router to retrieve_documents, showing the agent's "thinking" process.
+```
+http://localhost:3000
+```
 
-API Documentation: Visit http://localhost:8000/docs to interact with the raw FastAPI endpoints via Swagger UI.
+---
 
-👤 **Contact**
-Negil Babu Software Developer | AI Engineer
+# Usage
+
+### Document Ingestion
+Upload a PDF document using the dashboard.  
+The system automatically:
+
+1. Splits the document into semantic chunks  
+2. Generates embeddings locally  
+3. Stores vectors in Qdrant  
+
+### Querying
+Users can ask questions about the uploaded document.  
+The backend logs the reasoning flow (**Router → Retriever → Generator**).
+
+### API Access
+Interactive API documentation is available via:
+
+```
+http://localhost:8000/docs
+```
+
+---
+
+# Project Motivation
+
+Reliable document analysis requires **traceable reasoning and strict grounding in source material**. Veritas-Agent explores how **agentic workflows and structured retrieval loops** can improve reliability in RAG systems used in regulated environments such as healthcare.
+
+---
+
+# Author
+
+**Negil Babu**  
+Software Engineer | MSc Artificial Intelligence  
 
 Berlin, Germany
 
-[LinkedIn](https://www.linkedin.com/in/negil-babu/) | [GitHub](https://github.com/negilbabu) | [Website](https://negilbabu.com/)
+LinkedIn  
+https://www.linkedin.com/in/negil-babu/
 
+GitHub  
+https://github.com/negilbabu
+
+Portfolio  
+https://negilbabu.com
