@@ -1,3 +1,10 @@
+# Veritas custom
+backend/.env
+
+# Qdrant Database Storage
+qdrant_storage/
+
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[codz]
