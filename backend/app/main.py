@@ -1,18 +1,24 @@
-from fastapi import FastAPI
 from app.agents.graph import app_instance
 from langchain_core.messages import HumanMessage
-from fastapi import UploadFile, File
+from fastapi import FastAPI, UploadFile, File
 from app.services.ingestor import process_pdf
+from fastapi.middleware.cors import CORSMiddleware
+
 app = FastAPI(title="Veritas-Agent API")
+
+# NEW: Allow the Frontend to talk to the Backend
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:3000"], # Next.js address
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 @app.get("/chat")
 async def chat(query: str):
-    # Initialize the state
     inputs = {"messages": [HumanMessage(content=query)]}
-    
-    # Run the Agentic Workflow
-    result = await app_instance.ainvoke(inputs)
-    
+    result = await app_instance.ainvoke(inputs)    
     return {"response": result["messages"][-1].content if "messages" in result else "Searching..."}
 
 @app.get("/health")

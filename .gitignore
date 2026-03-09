@@ -1,10 +1,28 @@
 # Veritas custom
+#---  Backend --- 
 backend/.env
 
 # Qdrant Database Storage
 qdrant_storage/
 
+# --- Frontend (Next.js / Node) ---
+frontend/node_modules/
+frontend/.next/
+frontend/out/
+frontend/build/
+frontend/next-env.d.ts
+frontend/.env*.local
 
+# --- Cleanup of deleted/moved files ---
+# These appear as 'D' in your git changes
+frontend/src/package.json
+frontend/src/tailwind.config.js
+
+
+# --- OS / IDE Specific ---
+.DS_Store
+.vscode/
+.idea/
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[codz]
