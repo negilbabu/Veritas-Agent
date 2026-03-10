@@ -26,6 +26,7 @@ class ChatMessage(Base):
     __tablename__ = "chat_history"
     id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
     session_id = Column(String, index=True)
+    title = Column(String, nullable=True)
     role = Column(String) # 'user' or 'assistant'
     content = Column(Text)
     timestamp = Column(DateTime, default=datetime.datetime.utcnow)
@@ -35,9 +36,9 @@ SessionLocal = sessionmaker(bind=engine)
 def init_db():
     Base.metadata.create_all(bind=engine)
 
-def save_message(session_id: str, role: str, content: str):
+def save_message(session_id: str, role: str, content: str, title: str = None):
     db = SessionLocal()
-    msg = ChatMessage(session_id=session_id, role=role, content=content)
+    msg = ChatMessage(session_id=session_id, role=role, content=content, title=title)
     db.add(msg)
     db.commit()
     db.close()
