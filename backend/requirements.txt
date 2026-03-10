@@ -20,3 +20,4 @@ qdrant-client
 pydantic
 python-dotenv
 pypdf
+psycopg2-binary

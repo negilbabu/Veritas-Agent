@@ -28,12 +28,21 @@ class VectorService:
                 vectors_config=models.VectorParams(size=384, distance=models.Distance.COSINE),
             )
 
-    def search(self, query_text, limit=3):
+    def search(self, query_text, session_id: str, limit=3):
         query_vector = self.embeddings.embed_query(query_text)
-        
+        #  Filter results so we ONLY see documents for THIS session
+        search_filter = models.Filter(
+            must=[
+                models.FieldCondition(
+                    key="session_id", 
+                    match=models.MatchValue(value=session_id)
+                )
+            ]
+        )
         response = self.client.query_points(
             collection_name=self.collection_name,
-            query=query_vector, 
+            query=query_vector,
+            query_filter=search_filter, # Apply the filter!
             limit=limit
         )
         return response.points

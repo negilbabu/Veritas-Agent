@@ -1,44 +1,55 @@
+"use client";
 import { useState } from 'react';
 
 export const useChat = () => {
   const [loading, setLoading] = useState(false);
 
-  // Function to send a query to the /chat endpoint
-  const askQuestion = async (query: string) => {
+  const askQuestion = async (query: string, sessionId?: string) => {
     setLoading(true);
     try {
-      const response = await fetch(`http://localhost:8000/chat?query=${encodeURIComponent(query)}`);
-      if (!response.ok) throw new Error("Backend request failed");
+      // Use URLSearchParams for clean query building
+      const params = new URLSearchParams({ query });
+      if (sessionId) params.append("session_id", sessionId);
+
+      const response = await fetch(`http://localhost:8000/chat?${params.toString()}`);
+      
+      if (!response.ok) throw new Error("Backend failed");
       
       const data = await response.json();
-      return data.response;
+      return data;
     } catch (error) {
       console.error("Chat Error:", error);
-      return "I'm having trouble connecting to the server. Please ensure the backend is running.";
+      return { response: "Sorry, I encountered an error connecting to the agent.", sources: [] };
     } finally {
       setLoading(false);
     }
   };
 
-  // Function to send a file to the /upload endpoint
-  const uploadFile = async (file: File) => {
-    const formData = new FormData();
-    formData.append("file", file);
-    
+  const uploadFile = async (file: File, sessionId?: string) => {
     setLoading(true);
     try {
+      const formData = new FormData();
+      formData.append("file", file);
+      if (sessionId) {
+        formData.append("session_id", sessionId);
+      }
+
       const response = await fetch("http://localhost:8000/upload", {
         method: "POST",
         body: formData,
       });
-      return response.ok;
+
+      if (!response.ok) throw new Error("Upload failed");
+
+      return await response.json();
     } catch (error) {
       console.error("Upload Error:", error);
-      return false;
+      return null;
     } finally {
       setLoading(false);
     }
   };
 
+  // Ensure this return is INSIDE the useChat function brackets
   return { askQuestion, uploadFile, loading };
 };

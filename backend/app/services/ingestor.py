@@ -6,7 +6,7 @@ from app.services.vector_db import vector_service
 
 embeddings_model = HuggingFaceEmbeddings(model_name="all-MiniLM-L6-v2")
 
-def process_pdf(file_content: bytes, filename: str):
+def process_pdf(file_content: bytes, filename: str, session_id: str):
     # 1. Extract Text
     pdf_reader = pypdf.PdfReader(BytesIO(file_content))
     text = ""
@@ -26,7 +26,11 @@ def process_pdf(file_content: bytes, filename: str):
                 {
                     "id": hash(f"{filename}_{i}") % 10**10,
                     "vector": vector, 
-                    "payload": {"text": chunk, "source": filename}
+                    "payload": {
+                        "text": chunk, 
+                        "source": filename,
+                        "session_id": session_id,
+                        }
                 }
             ]
         )

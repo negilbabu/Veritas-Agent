@@ -4,6 +4,7 @@ from .state import AgentState
 from app.services.vector_db import vector_service
 from langchain_openai import ChatOpenAI
 from langchain_core.messages import SystemMessage, HumanMessage
+from langgraph.checkpoint.memory import MemorySaver
 
 # Point ChatOpenAI to Groq's API endpoint
 llm = ChatOpenAI(
@@ -23,10 +24,11 @@ def research_router(state: AgentState):
 # 2. Real Retrieval Node
 def retrieve_documents(state: AgentState):
     print("---QUERYING REAL QDRANT DB---")
+    session_id = state["session_id"]
     user_query = state["messages"][-1].content
     
     # Use the REAL search that embeds the query text
-    hits = vector_service.search(user_query) 
+    hits = vector_service.search(user_query, session_id=session_id) 
     
     is_relevant = len(hits) > 0
     # Extract text from the payload of each hit
@@ -46,9 +48,11 @@ def generate_answer(state: AgentState):
     user_query = state["messages"][-1].content
     
     system_prompt = f"""
-    You are Veritas-Agent, a professional medical assistant. 
-    Use the following context from the uploaded PDF to answer the query accurately.
-    If the context doesn't contain the answer, say you don't know based on the documents.
+    You are Veritas AI, a specialized medical research assistant. 
+    - Your goal is to provide accurate clinical information based ONLY on the provided documents.
+    - If asked who you are, state: "I am Veritas AI, your clinical document intelligence assistant."
+    - Do NOT mention Meta, Llama, or being a large language model unless specifically asked about your technical architecture.
+    - Always remain professional, concise, and evidence-based.
     
     CONTEXT:
     {context}
@@ -82,4 +86,5 @@ workflow.add_edge("retrieve", "generate")
 workflow.add_edge("generate", END)
 workflow.add_edge("respond", END)
 
-app_instance = workflow.compile()
+memory = MemorySaver()
+app_instance = workflow.compile(checkpointer=memory)

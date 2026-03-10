@@ -4,7 +4,7 @@ backend/.env
 
 # Qdrant Database Storage
 qdrant_storage/
-
+postgres_data/
 # --- Frontend (Next.js / Node) ---
 frontend/node_modules/
 frontend/.next/
