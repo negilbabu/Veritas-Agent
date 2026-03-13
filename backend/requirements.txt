@@ -1,23 +1,18 @@
-# Web Server & API
+--extra-index-url https://download.pytorch.org/whl/cpu
 fastapi
 uvicorn
 python-multipart
-
-# AI Orchestration (The Brain)
 langgraph
 langchain
 langchain-core
 langchain-community
 langchain-openai
 langchain-text-splitters
-
-# Local Embeddings (Privacy-First)
 sentence-transformers
 langchain-huggingface
-
-# Database & Data Handling
 qdrant-client
 pydantic
 python-dotenv
 pypdf
 psycopg2-binary
+torch

@@ -1,0 +1,11 @@
+**/node_modules
+**/venv
+**/.env
+.env
+**/postgres_data
+/postgres_data
+**/qdrant_storage
+/qdrant_storage
+**/.next
+**/__pycache__
+*.db
