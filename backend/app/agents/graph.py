@@ -16,8 +16,12 @@ llm = ChatOpenAI(
 # 1. Router Logic
 def research_router(state: AgentState):
     user_query = state["messages"][-1].content.lower()
-    # If they ask a question, we should almost always retrieve context
-    if any(word in user_query for word in ["find", "document", "report", "law", "medical", "treatment", "what", "how"]):
+    # Expanded keywords to include summarization intent
+    search_triggers = [
+        "find", "document", "report", "medical", "treatment", 
+        "what", "how", "summarize", "summary", "file", "pdf", "indexed"
+    ]    
+    if any(word in user_query for word in search_triggers):
         return "retrieve"
     return "respond"
 
@@ -39,7 +43,8 @@ def retrieve_documents(state: AgentState):
 # 3. Respond Node (For non-search queries like "Hello")
 def simple_respond(state: AgentState):
     user_query = state["messages"][-1].content
-    response = llm.invoke([HumanMessage(content=user_query)])
+    system_id = SystemMessage(content="You are Veritas AI, a specialized medical research assistant.")
+    response = llm.invoke([system_id, HumanMessage(content=user_query)])
     return {"messages": [response]}
 
 # 4. Generate Answer Node

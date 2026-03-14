@@ -30,11 +30,13 @@ class VectorService:
 
     def search(self, query_text, session_id: str, limit=3):
         query_vector = self.embeddings.embed_query(query_text)
+        # Ensure session_id is a clean string
+        clean_session_id = str(session_id).strip()
         #  Filter results so we ONLY see documents for THIS session
         search_filter = models.Filter(
             must=[
                 models.FieldCondition(
-                    key="session_id", 
+                    key="clean_session_id", 
                     match=models.MatchValue(value=session_id)
                 )
             ]
