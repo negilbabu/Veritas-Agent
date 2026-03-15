@@ -10,7 +10,19 @@ from app.agents.graph import app_instance
 from langchain_core.messages import HumanMessage, SystemMessage
 
 app = FastAPI(title="Veritas-Agent API")
+# Read the string from .env, fallback to localhost if empty
+allowed_origins_raw = os.getenv("ALLOWED_ORIGINS", "http://localhost:3000")
 
+# Convert "site1.com,site2.com" into ["site1.com", "site2.com"]
+origins = [origin.strip() for origin in allowed_origins_raw.split(",")]
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["http://localhost:3000"],
