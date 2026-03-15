@@ -1,0 +1,17 @@
+[build]
+  # Tell Netlify where the frontend code is
+  base = "frontend"
+  
+  # Tell Netlify the command to run
+  command = "npm run build"
+  
+  # Tell Netlify exactly where the build output is, 
+  # bypassing the UI auto-append logic.
+  publish = ".next"
+
+[[redirects]]
+  # This replaces the _redirects file and ensures 
+  # your chat routes don't 404 on refresh.
+  from = "/*"
+  to = "/index.html"
+  status = 200
