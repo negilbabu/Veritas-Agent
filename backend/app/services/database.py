@@ -7,7 +7,7 @@ from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.exc import OperationalError
 from dotenv import load_dotenv, find_dotenv
-from app.core.logging import log
+from app.main import log
 
 # 1. Load Environment Variables
 load_dotenv()
