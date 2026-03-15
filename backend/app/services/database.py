@@ -7,10 +7,11 @@ from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.exc import OperationalError
 from dotenv import load_dotenv, find_dotenv
+from app.main.logging import log
 
 # 1. Load Environment Variables
 load_dotenv()
-print(f"--- LOADING ENV FROM: {find_dotenv()} ---")
+log.info(f"--- LOADING ENV FROM: {find_dotenv()} ---")
 
 # 2. Database URL Logic
 # Priority 1: Use DATABASE_URL (for Supabase/Cloud)
@@ -18,7 +19,7 @@ print(f"--- LOADING ENV FROM: {find_dotenv()} ---")
 DATABASE_URL = os.getenv("DATABASE_URL")
 
 if not DATABASE_URL:
-    print("\n--- INFO: DATABASE_URL not found. Using local container config. ---")
+    log.info("\n--- INFO: DATABASE_URL not found. Using local container config. ---")
     user = os.getenv("POSTGRES_USER", "postgres")
     password = os.getenv("POSTGRES_PASSWORD", "postgrespassword")
     db = os.getenv("POSTGRES_DB", "veritas_db")
@@ -26,7 +27,7 @@ if not DATABASE_URL:
     port = os.getenv("POSTGRES_PORT", "5432")
     DATABASE_URL = f"postgresql://{user}:{password}@{host}:{port}/{db}"
 else:
-    print("\n--- SUCCESS: Found DATABASE_URL. Connecting to Cloud Database. ---")
+    log.info("\n--- SUCCESS: Found DATABASE_URL. Connecting to Cloud Database. ---")
 
 # 3. Engine Configuration
 # Added 'pool_pre_ping' to ensure we don't use "stale" cloud connections
@@ -57,15 +58,15 @@ def init_db():
     while retries > 0:
         try:
             Base.metadata.create_all(bind=engine)
-            print("--- VERITAS DB: Tables synchronized successfully! ---")
+            log.info("--- VERITAS DB: Tables synchronized successfully! ---")
             return
         except OperationalError as e:
             retries -= 1
-            print(f"--- DATABASE CONNECTION PENDING: {e} ---")
+            log.info(f"--- DATABASE CONNECTION PENDING: {e} ---")
             if retries == 0:
-                print("--- CRITICAL ERROR: Could not connect to Supabase. ---")
+                log.info("--- CRITICAL ERROR: Could not connect to Supabase. ---")
                 raise e
-            print(f"--- Retrying in 5 seconds... ({retries} attempts left) ---")
+            log.info(f"--- Retrying in 5 seconds... ({retries} attempts left) ---")
             time.sleep(5)
 
 # 6. Database Operations
