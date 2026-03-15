@@ -5,7 +5,7 @@ from qdrant_client import QdrantClient
 from qdrant_client.http import models
 from langchain_huggingface import HuggingFaceEmbeddings
 from dotenv import load_dotenv
-from app.main.logging import log
+from app.core.logging import log
 
 
 load_dotenv()
