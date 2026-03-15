@@ -10,34 +10,7 @@ from app.services.database import init_db, save_message, get_history, SessionLoc
 from app.services.ingestor import process_pdf
 from app.agents.graph import app_instance
 from langchain_core.messages import HumanMessage, SystemMessage
-
-import logging
-import sys
-
-def setup_logging():
-    # 1. Create a logger for 'veritas'
-    logger = logging.getLogger("veritas")
-    
-    # If the logger is already configured (e.g., during reload), don't add handlers again
-    if not logger.handlers:
-        logger.setLevel(logging.INFO)
-
-        # 2. Create an industry-standard format
-        # [Timestamp] [Level] [File:Line] - Message
-        formatter = logging.Formatter(
-            '%(asctime)s - %(levelname)s - [%(name)s] [%(filename)s:%(lineno)d] - %(message)s'
-        )
-
-        # 3. Stream to Console (Render reads from here)
-        console_handler = logging.StreamHandler(sys.stdout)
-        console_handler.setFormatter(formatter)
-        logger.addHandler(console_handler)
-
-    return logger
-
-# Initialize it once
-log = setup_logging()
-
+from app.utils import log
 app = FastAPI(title="Veritas-Agent API")
 # Read the string from .env, fallback to localhost if empty
 allowed_origins_raw = os.getenv("ALLOWED_ORIGINS", "http://localhost:3000")
