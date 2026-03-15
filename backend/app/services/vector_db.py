@@ -1,53 +1,76 @@
+import os
+import sys
 from qdrant_client import QdrantClient
 from qdrant_client.http import models
 from langchain_huggingface import HuggingFaceEmbeddings
-import os
 from dotenv import load_dotenv
 
 load_dotenv()
 
 class VectorService:
     def __init__(self):
-        self.client = QdrantClient(
-            host=os.getenv("QDRANT_HOST", "localhost"), 
-            port=int(os.getenv("QDRANT_PORT", 6333))
-        )
+        # 1. Fetch variables and STRIP them (removes accidental spaces/newlines)
+        url = os.getenv("QDRANT_URL", "").strip()
+        api_key = os.getenv("QDRANT_API_KEY", "").strip()
+
+        # 2. Forced Debugging (This will show up in Render logs)
+        print(f"--- QDRANT DEBUG: URL found: {'Yes' if url else 'No'} ---")
+        
+        if url and api_key:
+            print(f"--- ATTEMPTING CLOUD CONNECTION: {url} ---")
+            try:
+                self.client = QdrantClient(url=url, api_key=api_key)
+                # Test connection immediately
+                self.client.get_collections() 
+                print("--- SUCCESS: Veritas is connected to Qdrant Cloud! ---")
+            except Exception as e:
+                print(f"--- CRITICAL: Cloud Connection Failed: {e} ---")
+                raise e
+        else:
+            # Fallback for local Docker
+            print("--- INFO: No Cloud credentials. Falling back to Local Qdrant. ---")
+            host = os.getenv("QDRANT_HOST", "qdrant")
+            port = int(os.getenv("QDRANT_PORT", 6333))
+            self.client = QdrantClient(host=host, port=port)
+
         self.embeddings = HuggingFaceEmbeddings(model_name="all-MiniLM-L6-v2")
         self.collection_name = "veritas_docs"
         self._ensure_collection()
 
     def _ensure_collection(self):
-        # We check if it exists
-        collections = self.client.get_collections().collections
-        exists = any(c.name == self.collection_name for c in collections)
-        
-        if not exists:
-            # Create with 384 dimensions for all-MiniLM-L6-v2
-            self.client.create_collection(
-                collection_name=self.collection_name,
-                vectors_config=models.VectorParams(size=384, distance=models.Distance.COSINE),
-            )
+        # We wrap this in a try/except to catch the "Connection Refused" early
+        try:
+            collections = self.client.get_collections().collections
+            exists = any(c.name == self.collection_name for c in collections)
+            
+            if not exists:
+                print(f"--- CREATING COLLECTION: {self.collection_name} ---")
+                self.client.create_collection(
+                    collection_name=self.collection_name,
+                    vectors_config=models.VectorParams(size=384, distance=models.Distance.COSINE),
+                )
+        except Exception as e:
+            print(f"--- ERROR in _ensure_collection: {e} ---")
+            # If we are on Render and this fails, it's a configuration error
+            if os.getenv("RENDER"):
+                sys.exit(1)
 
-    def search(self, query_text, session_id: str, limit=3):
+    def search(self, query_text, session_id: str, limit=10):
         query_vector = self.embeddings.embed_query(query_text)
-        # Ensure session_id is a clean string
-        clean_session_id = str(session_id).strip()
-        #  Filter results so we ONLY see documents for THIS session
         search_filter = models.Filter(
             must=[
                 models.FieldCondition(
-                    key="clean_session_id", 
-                    match=models.MatchValue(value=session_id)
+                    key="session_id", 
+                    match=models.MatchValue(value=str(session_id))
                 )
             ]
         )
         response = self.client.query_points(
             collection_name=self.collection_name,
             query=query_vector,
-            query_filter=search_filter, # Apply the filter!
+            query_filter=search_filter,
             limit=limit
         )
         return response.points
 
-# Create a singleton instance
 vector_service = VectorService()

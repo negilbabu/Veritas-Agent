@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useState } from 'react';
-
+import { API_BASE_URL } from '../../config';
 interface SidebarProps {
   currentSessionId?: any;
   onSessionSelect: (id: string) => void;
@@ -18,7 +18,7 @@ export default function Sidebar({
 
   const fetchSessions = async () => {
     try {
-      const res = await fetch("http://localhost:8000/sessions");
+      const res = await fetch(`${API_BASE_URL}/sessions`);
       const data = await res.json();
       setSessions(data);
     } catch (e) {
@@ -33,7 +33,7 @@ export default function Sidebar({
   const handleDelete = async (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
     if (!confirm("Delete this chat?")) return;
-    await fetch(`http://localhost:8000/sessions/${id}`, { method: "DELETE" });
+    await fetch(`${API_BASE_URL}/sessions/${id}`, { method: "DELETE" });
     if (id === currentSessionId) onNewChat();
     fetchSessions();
   };

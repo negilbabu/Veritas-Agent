@@ -7,6 +7,7 @@ import Toast from '@/components/Toast';
 import { useChat } from '@/hooks/useChat';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import { API_BASE_URL } from '../../../../config'; 
 
 export default function ChatPage() {
   const { id: sessionId } = useParams();
@@ -24,7 +25,7 @@ export default function ChatPage() {
   useEffect(() => {
     const load = async () => {
       setMessages([]);
-      const res = await fetch(`http://localhost:8000/sessions/${sessionId}/history`);
+      const res = await fetch(`${API_BASE_URL}/sessions/${sessionId}/history`);
       if (res.ok) {
         const history = await res.json();
         setMessages(history.map((m: any) => ({ role: m.role, text: m.content })));
