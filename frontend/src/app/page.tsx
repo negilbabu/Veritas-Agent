@@ -6,7 +6,7 @@ import Sidebar from '@/components/Sidebar';
 import AppHeader from '@/components/AppHeader';
 import Toast from '@/components/Toast';
 import { useChat } from '@/hooks/useChat';
-import { API_BASE_URL } from '../../config';
+import { NEXT_PUBLIC_API_URL } from '../../config';
 
 export default function Home() {
   const router = useRouter();

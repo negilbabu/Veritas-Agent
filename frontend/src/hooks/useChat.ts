@@ -1,6 +1,6 @@
 "use client";
 import { useState } from 'react';
-import { API_BASE_URL } from '../../config';
+import { NEXT_PUBLIC_API_URL } from '../../config';
 export const useChat = () => {
   const [loading, setLoading] = useState(false);
 
@@ -11,7 +11,7 @@ export const useChat = () => {
       const params = new URLSearchParams({ query });
       if (sessionId) params.append("session_id", sessionId);
 
-      const response = await fetch(`${API_BASE_URL}/chat?${params.toString()}`);
+      const response = await fetch(`${NEXT_PUBLIC_API_URL}/chat?${params.toString()}`);
       
       if (!response.ok) throw new Error("Backend failed");
       
@@ -34,7 +34,7 @@ export const useChat = () => {
         formData.append("session_id", sessionId);
       }
 
-      const response = await fetch(`${API_BASE_URL}/upload`, {
+      const response = await fetch(`${NEXT_PUBLIC_API_URL}/upload`, {
         method: "POST",
         body: formData,
       });
