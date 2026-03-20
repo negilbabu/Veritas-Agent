@@ -3,19 +3,18 @@ import uuid
 from typing import Optional
 from fastapi import FastAPI, UploadFile, File, Form, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from sqlalchemy import desc, func
-import logging 
+from sqlalchemy import desc
+import logging
 import sys
 from app.services.database import init_db, save_message, get_history, SessionLocal, ChatMessage
 from app.services.ingestor import process_pdf
 from app.agents.graph import app_instance
 from langchain_core.messages import HumanMessage, SystemMessage
 from app.utils import log
-app = FastAPI(title="Veritas-Agent API")
-# Read the string from .env, fallback to localhost if empty
-allowed_origins_raw = os.getenv("ALLOWED_ORIGINS", "http://localhost:3000")
 
-# Convert "site1.com,site2.com" into ["site1.com", "site2.com"]
+app = FastAPI(title="Veritas-Agent API")
+
+allowed_origins_raw = os.getenv("ALLOWED_ORIGINS", "http://localhost:3000")
 origins = [origin.strip() for origin in allowed_origins_raw.split(",")]
 
 app.add_middleware(
@@ -31,13 +30,8 @@ def startup_event():
     init_db()
 
 
-# ── Shared helper: generate a short chat title via the LLM ──────────────────
+# ── Title generation ─────────────────────────────────────────────────────────
 async def generate_chat_title(text: str, source: str = "query") -> str:
-    """
-    Ask the LLM for a concise 4-6 word title.
-    `source` is either "query" (user typed a message) or "file" (PDF uploaded).
-    Falls back to a clean truncation if the LLM call fails.
-    """
     try:
         if source == "file":
             prompt = (
@@ -58,12 +52,11 @@ async def generate_chat_title(text: str, source: str = "query") -> str:
                     SystemMessage(content="You are a helpful assistant that only outputs short chat titles."),
                     HumanMessage(content=prompt),
                 ],
-                "session_id": "title-gen",   # throwaway thread
+                "session_id": "title-gen",
             },
             config={"configurable": {"thread_id": f"title-{uuid.uuid4()}"}},
         )
         title = result["messages"][-1].content.strip().strip('"').strip("'")
-        # Safety cap — never let a title exceed 50 chars
         return title[:50] if title else _fallback_title(text)
     except Exception as e:
         log.info(f"[title-gen] LLM call failed: {e}")
@@ -71,15 +64,13 @@ async def generate_chat_title(text: str, source: str = "query") -> str:
 
 
 def _fallback_title(text: str) -> str:
-    """Clean truncation used when the LLM is unavailable."""
     clean = text.replace("_", " ").replace("-", " ")
-    # Remove common PDF suffix for file names
     if clean.lower().endswith(".pdf"):
         clean = clean[:-4]
     return (clean[:30] + "…") if len(clean) > 30 else clean
 
 
-# ── /upload ──────────────────────────────────────────────────────────────────
+# ── /upload ───────────────────────────────────────────────────────────────────
 @app.post("/upload")
 async def upload_document(
     file: UploadFile = File(...),
@@ -92,10 +83,8 @@ async def upload_document(
         content = await file.read()
         num_chunks = process_pdf(content, file.filename, session_id)
 
-        # Generate a meaningful title from the filename
         chat_title = await generate_chat_title(file.filename, source="file")
 
-        # Persist system trace + assistant greeting with the title
         save_message(session_id, "system",
                      f"📎 Document analyzed: {file.filename}", title=chat_title)
 
@@ -125,15 +114,17 @@ async def chat(query: str, session_id: Optional[str] = None):
     if not session_id or session_id in ["null", "undefined", ""]:
         session_id = str(uuid.uuid4())
         is_new_session = True
-        # Generate a smart title only for the very first message
         chat_title = await generate_chat_title(query, source="query")
     else:
         db = SessionLocal()
         first_msg = db.query(ChatMessage).filter(
             ChatMessage.session_id == session_id
         ).first()
-        # Reuse whatever title was set when the session was created
-        chat_title = first_msg.title if (first_msg and first_msg.title) else await generate_chat_title(query, source="query")
+        chat_title = (
+            first_msg.title
+            if (first_msg and first_msg.title)
+            else await generate_chat_title(query, source="query")
+        )
         db.close()
 
     save_message(session_id, "user", query, title=chat_title)
@@ -161,18 +152,44 @@ async def chat(query: str, session_id: Optional[str] = None):
 
 
 # ── /sessions ─────────────────────────────────────────────────────────────────
+# FIX: Use a subquery to get the LATEST title per session, avoiding duplicates
+# caused by mixing .distinct() and .group_by() with multiple title values.
 @app.get("/sessions")
 async def get_all_sessions():
     db = SessionLocal()
     try:
+        # Subquery: for each session, get the row with the most recent timestamp
+        from sqlalchemy import func
+        latest_ts = (
+            db.query(
+                ChatMessage.session_id,
+                func.max(ChatMessage.timestamp).label("max_ts"),
+            )
+            .group_by(ChatMessage.session_id)
+            .subquery()
+        )
+
+        # Join back to get the title from that latest row
         results = (
-            db.query(ChatMessage.session_id, ChatMessage.title)
-            .distinct(ChatMessage.session_id)
-            .group_by(ChatMessage.session_id, ChatMessage.title)
-            .order_by(desc(func.max(ChatMessage.timestamp)))
+            db.query(ChatMessage.session_id, ChatMessage.title, ChatMessage.timestamp)
+            .join(
+                latest_ts,
+                (ChatMessage.session_id == latest_ts.c.session_id)
+                & (ChatMessage.timestamp == latest_ts.c.max_ts),
+            )
+            .order_by(desc(ChatMessage.timestamp))
             .all()
         )
-        return [{"id": r[0], "title": r[1] or "New Chat"} for r in results]
+
+        # Deduplicate by session_id preserving order (safety net)
+        seen: set = set()
+        sessions = []
+        for r in results:
+            if r.session_id not in seen:
+                seen.add(r.session_id)
+                sessions.append({"id": r.session_id, "title": r.title or "New Chat"})
+
+        return sessions
     finally:
         db.close()
 

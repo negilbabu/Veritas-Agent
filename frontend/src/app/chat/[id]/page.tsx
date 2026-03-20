@@ -7,12 +7,14 @@ import Toast from '@/components/Toast';
 import { useChat } from '@/hooks/useChat';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-import { NEXT_PUBLIC_API_URL } from '../../../../config'; 
+import { NEXT_PUBLIC_API_URL } from '../../../../config';
 
 export default function ChatPage() {
   const { id: sessionId } = useParams();
   const router = useRouter();
   const [messages, setMessages] = useState<any[]>([]);
+  const [chatTitle, setChatTitle] = useState<string>('');
+  const [historyLoading, setHistoryLoading] = useState(true);
   const [query, setQuery] = useState('');
   const [toast, setToast] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
@@ -24,11 +26,25 @@ export default function ChatPage() {
 
   useEffect(() => {
     const load = async () => {
+      setHistoryLoading(true);
       setMessages([]);
-      const res = await fetch(`${NEXT_PUBLIC_API_URL}/sessions/${sessionId}/history`);
-      if (res.ok) {
-        const history = await res.json();
-        setMessages(history.map((m: any) => ({ role: m.role, text: m.content })));
+      setChatTitle('');
+      try {
+        const res = await fetch(`${NEXT_PUBLIC_API_URL}/sessions/${sessionId}/history`);
+        if (res.ok) {
+          const history = await res.json();
+          const mapped = history.map((m: any) => ({ role: m.role, text: m.content }));
+          setMessages(mapped);
+          // Grab title from the sidebar sessions list so we don't need a separate endpoint
+          const sessRes = await fetch(`${NEXT_PUBLIC_API_URL}/sessions`);
+          if (sessRes.ok) {
+            const sessions: { id: string; title: string }[] = await sessRes.json();
+            const match = sessions.find(s => s.id === sessionId);
+            if (match) setChatTitle(match.title);
+          }
+        }
+      } finally {
+        setHistoryLoading(false);
       }
     };
     if (sessionId) load();
@@ -49,6 +65,8 @@ export default function ChatPage() {
     setMessages(prev => [...prev, { role: 'user', text: currentQuery }]);
     setQuery('');
     const data = await askQuestion(currentQuery, sessionId as string);
+    // Update title if this was the first message (new session got a title back)
+    if (data?.chat_title && !chatTitle) setChatTitle(data.chat_title);
     setMessages(prev => [...prev, { role: 'assistant', text: data.response, sources: data.sources }]);
   };
 
@@ -61,6 +79,7 @@ export default function ChatPage() {
       const data = await uploadFile(file, sessionId as string);
       if (data) {
         showToast(`Successfully analyzed: ${file.name}`);
+        if (data.chat_title && !chatTitle) setChatTitle(data.chat_title);
         setMessages(prev => [
           ...prev,
           { role: 'system', text: `📎 Document analyzed: ${file.name}` },
@@ -77,28 +96,14 @@ export default function ChatPage() {
   const isBusy = loading || uploading;
 
   return (
-    /*
-      Layout shell:
-        ┌────────────────────────────────┐
-        │         AppHeader (h-14)       │  ← full width, always visible
-        ├──────────┬─────────────────────┤
-        │          │                     │
-        │ Sidebar  │    Chat content     │  ← fills remaining height
-        │          │                     │
-        └──────────┴─────────────────────┘
-    */
     <div className="flex flex-col h-screen bg-slate-950 text-slate-200 overflow-hidden">
 
-      {/* ── Full-width header ── */}
       <AppHeader
         sidebarCollapsed={sidebarCollapsed}
         onToggleSidebar={() => setSidebarCollapsed(p => !p)}
       />
 
-      {/* ── Body row: sidebar + content ── */}
       <div className="flex flex-1 min-h-0">
-
-        {/* Sidebar sits flush under header, no floating toggle button needed */}
         <Sidebar
           currentSessionId={sessionId}
           onSessionSelect={(id: string) => router.push(`/chat/${id}`)}
@@ -106,13 +111,48 @@ export default function ChatPage() {
           collapsed={sidebarCollapsed}
         />
 
-        {/* ── Main chat area ── */}
         <main className="flex-1 flex flex-col min-w-0 relative">
           {toast && <Toast message={toast} onClose={() => setToast(null)} />}
 
-          {/* Message list */}
+          {/* ── Chat title bar ── */}
+          <div className="shrink-0 px-5 py-2.5 border-b border-slate-800/70 bg-slate-950/60 backdrop-blur flex items-center gap-2.5 min-h-[44px]">
+            {historyLoading ? (
+              <div className="h-4 w-48 bg-slate-800 rounded-full animate-pulse" />
+            ) : chatTitle ? (
+              <>
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-3.5 h-3.5 text-slate-600 shrink-0">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M7.5 8.25h9m-9 3H12m-9.75 1.51c0 1.6 1.123 2.994 2.707 3.227 1.129.166 2.27.293 3.423.379.35.026.67.21.865.501L12 21l2.755-4.133a1.14 1.14 0 01.865-.501 48.172 48.172 0 003.423-.379c1.584-.233 2.707-1.626 2.707-3.228V6.741c0-1.602-1.123-2.995-2.707-3.228A48.394 48.394 0 0012 3c-2.392 0-4.744.175-7.043.513C3.373 3.746 2.25 5.14 2.25 6.741v6.018z" />
+                </svg>
+                <span className="text-xs font-medium text-slate-400 truncate">{chatTitle}</span>
+              </>
+            ) : null}
+          </div>
+
+          {/* ── Message list ── */}
           <div className="flex-1 overflow-y-auto px-4 py-6 space-y-4">
-            {messages.map((m, i) => {
+
+            {/* History skeleton */}
+            {historyLoading && (
+              <div className="space-y-5 pt-2">
+                {/* Simulate a few alternating bubbles */}
+                {[
+                  { side: 'left',  w: 'w-64' },
+                  { side: 'right', w: 'w-48' },
+                  { side: 'left',  w: 'w-80' },
+                  { side: 'right', w: 'w-56' },
+                  { side: 'left',  w: 'w-72' },
+                ].map((s, i) => (
+                  <div key={i} className={`flex ${s.side === 'right' ? 'justify-end' : 'justify-start gap-3'}`}>
+                    {s.side === 'left' && (
+                      <div className="w-7 h-7 rounded-full bg-slate-800 animate-pulse shrink-0 mt-0.5" />
+                    )}
+                    <div className={`${s.w} h-10 rounded-2xl bg-slate-800/70 animate-pulse`} />
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {!historyLoading && messages.map((m, i) => {
               // System (file upload notice) — right side
               if (m.role === 'system') {
                 const filename = m.text.replace('📎 Document analyzed: ', '');
@@ -238,7 +278,6 @@ export default function ChatPage() {
               </button>
             </div>
 
-            {/* Disclaimer */}
             <p className="text-center text-[10px] text-slate-600 py-2.5 max-w-2xl mx-auto leading-relaxed">
               Veritas may produce inaccurate information. Always verify clinical decisions with qualified medical professionals.
               Not a substitute for professional medical advice, diagnosis, or treatment.
