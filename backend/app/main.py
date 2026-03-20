@@ -167,6 +167,7 @@ async def get_all_sessions():
     try:
         results = (
             db.query(ChatMessage.session_id, ChatMessage.title)
+            .distinct(ChatMessage.session_id)
             .group_by(ChatMessage.session_id, ChatMessage.title)
             .order_by(desc(func.max(ChatMessage.timestamp)))
             .all()
