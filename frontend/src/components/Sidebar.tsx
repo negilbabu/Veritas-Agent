@@ -19,14 +19,17 @@ export default function Sidebar({
   const fetchSessions = async () => {
     try {
       const res = await fetch(`${NEXT_PUBLIC_API_URL}/sessions`);
-      const data = await res.json();
       
+      // 1. Tell TypeScript data is an array of sessions
+      const data: { id: string; title: string }[] = await res.json();
+      
+      // 2. Add types to the filter parameters
       const uniqueSessions = data.filter((session, index, self) =>
         index === self.findIndex((s) => s.id === session.id)
       );    
+      
       setSessions(uniqueSessions);
     } catch (e) {
-      console.error(e);
       console.error("Sidebar fetch error:", e);
     }
   };
