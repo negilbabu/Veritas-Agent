@@ -1,25 +1,35 @@
 "use client";
 import { useState } from 'react';
 import { NEXT_PUBLIC_API_URL } from '../../config';
+
+/**
+ * useChat — attaches Bearer token if present in localStorage.
+ * Works for both authenticated users and guests (no token = guest).
+ */
 export const useChat = () => {
   const [loading, setLoading] = useState(false);
+
+  const getAuthHeaders = (): Record<string, string> => {
+    if (typeof window === 'undefined') return {};
+    const token = localStorage.getItem('veritas_token');
+    return token ? { Authorization: `Bearer ${token}` } : {};
+  };
 
   const askQuestion = async (query: string, sessionId?: string) => {
     setLoading(true);
     try {
-      // Use URLSearchParams for clean query building
       const params = new URLSearchParams({ query });
-      if (sessionId) params.append("session_id", sessionId);
+      if (sessionId) params.append('session_id', sessionId);
 
-      const response = await fetch(`${NEXT_PUBLIC_API_URL}/chat?${params.toString()}`);
-      
-      if (!response.ok) throw new Error("Backend failed");
-      
-      const data = await response.json();
-      return data;
+      const response = await fetch(`${NEXT_PUBLIC_API_URL}/chat?${params.toString()}`, {
+        headers: getAuthHeaders(),
+      });
+
+      if (!response.ok) throw new Error('Backend failed');
+      return await response.json();
     } catch (error) {
-      console.error("Chat Error:", error);
-      return { response: "Sorry, I encountered an error connecting to the agent.", sources: [] };
+      console.error('Chat Error:', error);
+      return { response: 'Sorry, I encountered an error connecting to the agent.', sources: [] };
     } finally {
       setLoading(false);
     }
@@ -29,27 +39,24 @@ export const useChat = () => {
     setLoading(true);
     try {
       const formData = new FormData();
-      formData.append("file", file);
-      if (sessionId) {
-        formData.append("session_id", sessionId);
-      }
+      formData.append('file', file);
+      if (sessionId) formData.append('session_id', sessionId);
 
       const response = await fetch(`${NEXT_PUBLIC_API_URL}/upload`, {
-        method: "POST",
+        method: 'POST',
+        headers: getAuthHeaders(),  // Note: do NOT set Content-Type — browser sets multipart boundary
         body: formData,
       });
 
-      if (!response.ok) throw new Error("Upload failed");
-
+      if (!response.ok) throw new Error('Upload failed');
       return await response.json();
     } catch (error) {
-      console.error("Upload Error:", error);
+      console.error('Upload Error:', error);
       return null;
     } finally {
       setLoading(false);
     }
   };
 
-  // Ensure this return is INSIDE the useChat function brackets
   return { askQuestion, uploadFile, loading };
 };
