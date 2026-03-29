@@ -21,7 +21,12 @@ export default function Sidebar({
   const fetchSessions = async () => {
     setLoadingSessions(true);
     try {
-      const res = await fetch(`${NEXT_PUBLIC_API_URL}/sessions`);
+      const token = localStorage.getItem('veritas_token');
+      const headers: Record<string, string> = token 
+        ? { "Authorization": `Bearer ${token}` } 
+        : {};
+
+      const res = await fetch(`${NEXT_PUBLIC_API_URL}/sessions`, { headers });
       const data: { id: string; title: string }[] = await res.json();
       setSessions(data);
     } catch (e) {
