@@ -1,16 +1,21 @@
 "use client";
+import { GoogleLogin } from '@react-oauth/google';
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '@/hooks/useAuth';
+import Toast from '@/components/Toast';
 
 export default function LoginPage() {
   const router = useRouter();
-  const { login } = useAuth();
+  // const { login } = useAuth();
+  const { login, googleLogin } = useAuth();
   const [email,    setEmail]    = useState('');
   const [password, setPassword] = useState('');
   const [error,    setError]    = useState('');
   const [loading,  setLoading]  = useState(false);
+  const [toast, setToast] = useState<string | null>(null);
+
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -21,6 +26,18 @@ export default function LoginPage() {
       router.push('/');
     } catch (err: any) {
       setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+  const handleGoogleSuccess = async (credentialResponse: any) => {
+    setLoading(true);
+    try {
+      // credentialResponse.credential is the id_token needed by your backend
+      await googleLogin(credentialResponse.credential);
+      router.push('/');
+    } catch (err: any) {
+      setToast(err.message);
     } finally {
       setLoading(false);
     }
@@ -42,7 +59,15 @@ export default function LoginPage() {
         <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-2xl">
 
           {/* Google Sign In */}
-          <button
+          <div className="w-full flex justify-center mb-4">
+            <GoogleLogin
+              onSuccess={handleGoogleSuccess}
+              onError={() => setToast("Google Login Failed")}
+              theme="filled_black"
+              shape="pill"
+            />
+          </div>
+          {/* <button
             onClick={() => router.push('/auth/login?method=google')}
             className="w-full flex items-center justify-center gap-3 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 py-2.5 rounded-xl text-sm font-medium transition-all mb-4"
           >
@@ -53,7 +78,7 @@ export default function LoginPage() {
               <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
             </svg>
             Continue with Google
-          </button>
+          </button> */}
 
           <div className="flex items-center gap-3 mb-4">
             <div className="flex-1 h-px bg-slate-800" />

@@ -1,7 +1,9 @@
+import { GoogleOAuthProvider } from '@react-oauth/google';
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import AuthGuard from "@/components/AuthGuard";
+import { NEXT_PUBLIC_GOOGLE_CLIENT_ID } from '../../config';
 
 const geistSans = Geist({ variable: "--font-geist-sans", subsets: ["latin"] });
 const geistMono = Geist_Mono({ variable: "--font-geist-mono", subsets: ["latin"] });
@@ -24,9 +26,11 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
-        <AuthGuard>
-          {children}
-        </AuthGuard>
+        <GoogleOAuthProvider clientId={NEXT_PUBLIC_GOOGLE_CLIENT_ID}> 
+          <AuthGuard>
+            {children}
+          </AuthGuard>
+        </GoogleOAuthProvider>
       </body>
     </html>
   );
