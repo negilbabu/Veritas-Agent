@@ -1,6 +1,8 @@
+
 "use client";
-import { useState, useEffect, useCallback } from 'react';
+import { useCallback } from 'react';
 import { NEXT_PUBLIC_API_URL } from '../../config';
+import { useAuthContext } from '@/context/AuthContext';
 
 export interface AuthUser {
   id: string;
@@ -11,36 +13,18 @@ export interface AuthUser {
 }
 
 const TOKEN_KEY = 'veritas_token';
-const USER_KEY  = 'veritas_user';
 
 export function useAuth() {
-  const [user,    setUser]    = useState<AuthUser | null>(null);
-  const [loading, setLoading] = useState(true);  // true while rehydrating from storage
+  // Consume the shared global state from AuthContext
+  const { user, loading, saveSession, logout, googleLogin } = useAuthContext();
 
-  // Rehydrate on mount
-  useEffect(() => {
-    const stored = localStorage.getItem(USER_KEY);
-    if (stored) {
-      try { setUser(JSON.parse(stored)); } catch {}
-    }
-    setLoading(false);
+  // Utility to get the token for internal use
+  const getToken = useCallback(() => {
+    if (typeof window === 'undefined') return null;
+    return localStorage.getItem(TOKEN_KEY);
   }, []);
 
-  const saveSession = useCallback((token: string, userData: AuthUser) => {
-    localStorage.setItem(TOKEN_KEY, token);
-    localStorage.setItem(USER_KEY, JSON.stringify(userData));
-    setUser(userData);
-  }, []);
-
-  const logout = useCallback(() => {
-    localStorage.removeItem(TOKEN_KEY);
-    localStorage.removeItem(USER_KEY);
-    setUser(null);
-  }, []);
-
-  const getToken = useCallback(() => localStorage.getItem(TOKEN_KEY), []);
-
-  // Attach Bearer token to fetch headers
+  // Helper to attach Bearer token to fetch headers
   const authHeaders = useCallback((): Record<string, string> => {
     const token = getToken();
     return token ? { Authorization: `Bearer ${token}` } : {};
@@ -65,18 +49,8 @@ export function useAuth() {
     });
     const data = await res.json();
     if (!res.ok) throw new Error(data.detail || 'Login failed');
-    saveSession(data.access_token, data.user);
-    return data.user;
-  }, [saveSession]);
-
-  const googleLogin = useCallback(async (idToken: string) => {
-    const res = await fetch(`${NEXT_PUBLIC_API_URL}/auth/google`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ id_token: idToken }),
-    });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.detail || 'Google login failed');
+    
+    // Update the global context state
     saveSession(data.access_token, data.user);
     return data.user;
   }, [saveSession]);
@@ -100,7 +74,12 @@ export function useAuth() {
     });
     const data = await res.json();
     if (!res.ok) throw new Error(data.detail || 'Update failed');
-    if (user) saveSession(getToken()!, { ...user, data_retention_days: days });
+    
+    // Update the session in context to reflect new preference
+    if (user) {
+      const token = getToken();
+      if (token) saveSession(token, { ...user, data_retention_days: days });
+    }
     return data;
   }, [authHeaders, user, saveSession, getToken]);
 
@@ -111,6 +90,8 @@ export function useAuth() {
     });
     const data = await res.json();
     if (!res.ok) throw new Error(data.detail || 'Delete failed');
+    
+    // Global logout
     logout();
     return data;
   }, [authHeaders, logout]);
@@ -123,7 +104,7 @@ export function useAuth() {
     authHeaders,
     register,
     login,
-    googleLogin,
+    googleLogin, // This is now the version from Context
     logout,
     changePassword,
     updateRetention,

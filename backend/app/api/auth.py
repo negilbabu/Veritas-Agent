@@ -158,78 +158,6 @@ async def login(body: LoginRequest):
         },
     }
 
-
-# @router.post("/google")
-# async def google_auth(body: GoogleAuthRequest):
-#     """
-#     Verifies a Google ID token from the frontend.
-#     Uses google-auth library if GOOGLE_CLIENT_ID is configured,
-#     otherwise returns 501.
-#     """
-#     if not GOOGLE_CLIENT_ID:
-#         raise HTTPException(status_code=501, detail="Google auth not configured on this server")
-
-#     # Lazy import — only fails if google-auth is not installed AND this endpoint is hit
-#     try:
-#         from google.oauth2 import id_token as google_id_token
-#         from google.auth.transport import requests as google_requests
-#     except ImportError:
-#         raise HTTPException(
-#             status_code=501,
-#             detail="google-auth package not installed. Add 'google-auth' to requirements.txt"
-#         )
-
-#     try:
-#         info = google_id_token.verify_oauth2_token(
-#             body.id_token, google_requests.Request(), GOOGLE_CLIENT_ID
-#         )
-#     except Exception as e:
-#         raise HTTPException(status_code=401, detail=f"Invalid Google token: {e}")
-#     try:
-#         # Add clock_skew=10 (seconds) to allow for time drift
-#         info = google_id_token.verify_oauth2_token(
-#             body.id_token, 
-#             google_requests.Request(), 
-#             GOOGLE_CLIENT_ID,
-#             clock_skew=10  # This fixes the "Token used too early" error
-#         )
-#     except Exception as e:
-#         raise HTTPException(status_code=401, detail=f"Invalid Google token: {e}")
-
-
-#     google_id = info["sub"]
-#     email     = info["email"]
-#     name      = info.get("name", email.split("@")[0])
-
-#     db = SessionLocal()
-#     try:
-#         user = db.query(User).filter(
-#             (User.google_id == google_id) | (User.email == email)
-#         ).first()
-
-#         if not user:
-#             user = create_user(email=email, name=name, provider="google", google_id=google_id)
-#             send_welcome_email(email, name)
-#         elif not user.google_id:
-#             user.google_id   = google_id
-#             user.provider    = "google"
-#             user.is_verified = True
-#             db.commit()
-#             db.refresh(user)
-#     finally:
-#         db.close()
-
-#     token = create_access_token(user.id, user.email)
-#     return {
-#         "access_token": token,
-#         "user": {
-#             "id": user.id,
-#             "email": user.email,
-#             "name": user.name,
-#             "provider": user.provider,
-#             "data_retention_days": user.data_retention_days,
-#         },
-#     }
 @router.post("/google")
 async def google_auth(body: GoogleAuthRequest):
     """
@@ -257,7 +185,7 @@ async def google_auth(body: GoogleAuthRequest):
             body.id_token, 
             google_requests.Request(), 
             GOOGLE_CLIENT_ID,
-            clock_skew=10
+            clock_skew_in_seconds=10
         )
     except Exception as e:
         raise HTTPException(status_code=401, detail=f"Invalid Google token: {e}")
