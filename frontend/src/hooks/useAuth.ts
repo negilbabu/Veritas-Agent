@@ -104,7 +104,7 @@ export function useAuth() {
     authHeaders,
     register,
     login,
-    googleLogin, // This is now the version from Context
+    googleLogin, 
     logout,
     changePassword,
     updateRetention,

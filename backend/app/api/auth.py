@@ -139,7 +139,7 @@ async def verify_email(token: str):
 @router.post("/login")
 async def login(body: LoginRequest):
     user = get_user_by_email(body.email)
-    if not user or user.provider != "email":
+    if not user or not user.password_hash:
         raise HTTPException(status_code=401, detail="Invalid credentials")
     if not verify_password(body.password, user.password_hash or ""):
         raise HTTPException(status_code=401, detail="Invalid credentials")
@@ -201,19 +201,21 @@ async def google_auth(body: GoogleAuthRequest):
         ).first()
 
         if not user:
-            # Create a new user if they don't exist
+            # Create a new user if they don't exist'
+            print("---------------USER NEW_____________________")
             user = create_user(email=email, name=name, provider="google", google_id=google_id)
             send_welcome_email(email, name)
         elif not user.google_id:
+            print("---------------USER EXISTING_____________________")
+
             # Link Google ID to existing email account if not already linked
             user.google_id   = google_id
-            user.provider    = "google"
             user.is_verified = True
             db.commit()
             db.refresh(user)
     finally:
         db.close()
-
+ 
     token = create_access_token(user.id, user.email)
     return {
         "access_token": token,
