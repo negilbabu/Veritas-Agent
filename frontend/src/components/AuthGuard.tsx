@@ -3,36 +3,40 @@ import { useEffect, useState } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
 
-interface AuthGuardProps {
-  children: React.ReactNode;
-}
+const PUBLIC_PATHS = ['/auth/login', '/auth/register', '/auth/guest', '/auth/verify'];
 
-const PUBLIC_PATHS = ['/auth/login', '/auth/register', '/auth/verify', '/auth/guest'];
-
-export default function AuthGuard({ children }: AuthGuardProps) {
-  const router   = useRouter();
-  const pathname = usePathname();
+export default function AuthGuard({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
-
-  // Guest session check — must be client-side only (sessionStorage is not available in SSR)
-  const [guestSession, setGuestSession] = useState<string | null>(null);
+  const router = useRouter();
+  const pathname = usePathname();
+  
+  // Use state to prevent Server/Client Hydration Mismatches
+  const [isGuest, setIsGuest] = useState<boolean | null>(null);
 
   useEffect(() => {
-    setGuestSession(sessionStorage.getItem('guest_session_id'));
+    // This only runs on the browser, safely checking sessionStorage
+    setIsGuest(!!sessionStorage.getItem('guest_session_id'));
   }, [pathname]);
 
-  const isPublicPath = PUBLIC_PATHS.some(p => pathname.startsWith(p));
-  const isChatPath   = pathname.startsWith('/chat/');
-  const isGuestChat  = isChatPath && guestSession && pathname.includes(guestSession);
-
   useEffect(() => {
-    if (loading) return;
-    if (isPublicPath || isGuestChat || user) return;
-    router.push('/auth/login');
-  }, [loading, user, pathname, isGuestChat]);
+    // Wait until both context and guest state are loaded
+    if (loading || isGuest === null) return;
 
-  // Show spinner while rehydrating auth state from localStorage
-  if (loading) {
+    const isPublicPath = PUBLIC_PATHS.some(p => pathname.startsWith(p));
+
+    // RULE 1: If not logged in, not a guest, and trying to access a private path -> Login
+    if (!user && !isGuest && !isPublicPath) {
+      router.push('/auth/login');
+    }
+
+    // RULE 2: If logged in and trying to access login/register -> Home
+    if (user && isPublicPath && pathname !== '/auth/verify') {
+      router.push('/');
+    }
+  }, [user, loading, isGuest, pathname, router]);
+
+  // Prevent flashing of protected content while checking state
+  if (loading || isGuest === null) {
     return (
       <div className="min-h-screen bg-slate-950 flex items-center justify-center">
         <div className="w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />

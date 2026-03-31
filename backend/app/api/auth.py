@@ -42,6 +42,7 @@ class RegisterRequest(BaseModel):
     email: EmailStr
     name: str
     password: str
+    session_id: Optional[str] = None  # For claiming anonymous session history after registration
 
 
 class LoginRequest(BaseModel):
@@ -51,6 +52,7 @@ class LoginRequest(BaseModel):
 
 class GoogleAuthRequest(BaseModel):
     id_token: str
+    session_id: Optional[str] = None
 
 
 class ChangePasswordRequest(BaseModel):
@@ -101,6 +103,10 @@ async def register(body: RegisterRequest):
         password_hash=hash_password(body.password),
         provider="email",
     )
+
+    if body.session_id:
+        from app.services.database import claim_session_history
+        claim_session_history(body.session_id, user.id)
 
     verify_token = create_short_token(user.id, purpose="verify_email", expires_hours=24)
     send_verification_email(body.email, body.name, verify_token)
@@ -213,6 +219,10 @@ async def google_auth(body: GoogleAuthRequest):
             user.is_verified = True
             db.commit()
             db.refresh(user)
+
+        if body.session_id:
+            from app.services.database import claim_session_history
+            claim_session_history(body.session_id, user.id)
     finally:
         db.close()
  

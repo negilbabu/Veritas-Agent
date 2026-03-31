@@ -161,3 +161,16 @@ def delete_user_data(user_id: str):
         log.info(f"[GDPR] Deleted all data for user {user_id}")
     finally:
         db.close()
+
+def claim_session_history(session_id: str, user_id: str):
+    """Assigns an anonymous guest session to a newly registered user."""
+    db = SessionLocal()
+    try:
+        # Update all messages in this session that currently have no user
+        db.query(ChatMessage).filter(
+            ChatMessage.session_id == session_id,
+            ChatMessage.user_id == None
+        ).update({"user_id": user_id})
+        db.commit()
+    finally:
+        db.close()

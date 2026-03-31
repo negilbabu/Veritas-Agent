@@ -31,13 +31,17 @@ export function useAuth() {
   }, [getToken]);
 
   const register = useCallback(async (email: string, name: string, password: string) => {
+    const guestSessionId = typeof window !== 'undefined' ? sessionStorage.getItem('guest_session_id') : null;
     const res = await fetch(`${NEXT_PUBLIC_API_URL}/auth/register`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, name, password }),
+      body: JSON.stringify({ email, name, password, session_id: guestSessionId || undefined }),
     });
     const data = await res.json();
     if (!res.ok) throw new Error(data.detail || 'Registration failed');
+    if (typeof window !== 'undefined') {
+    sessionStorage.removeItem('guest_session_id');
+    }
     return data;
   }, []);
 

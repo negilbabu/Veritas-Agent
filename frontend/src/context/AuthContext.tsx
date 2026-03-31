@@ -38,13 +38,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const googleLogin = async (idToken: string) => {
+    const guestSessionId = typeof window !== 'undefined' ? sessionStorage.getItem('guest_session_id') : null;
     const res = await fetch(`${NEXT_PUBLIC_API_URL}/auth/google`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ id_token: idToken }),
+      body: JSON.stringify({ id_token: idToken, session_id: guestSessionId || undefined }),
     });
     const data = await res.json();
     if (!res.ok) throw new Error(data.detail || 'Google login failed');
+    if (typeof window !== 'undefined') {
+      sessionStorage.removeItem('guest_session_id');
+    }
     saveSession(data.access_token, data.user);
     return data.user;
   };

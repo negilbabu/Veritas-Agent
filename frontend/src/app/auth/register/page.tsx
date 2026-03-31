@@ -2,11 +2,14 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { GoogleLogin } from '@react-oauth/google';
 import { useAuth } from '@/hooks/useAuth';
 
 export default function RegisterPage() {
   const router  = useRouter();
-  const { register } = useAuth();
+  // Extract googleLogin from the hook
+  const { register, googleLogin } = useAuth(); 
+  
   const [name,     setName]     = useState('');
   const [email,    setEmail]    = useState('');
   const [password, setPassword] = useState('');
@@ -14,6 +17,20 @@ export default function RegisterPage() {
   const [error,    setError]    = useState('');
   const [success,  setSuccess]  = useState(false);
   const [loading,  setLoading]  = useState(false);
+
+  // Added: Google Success Handler
+  const handleGoogleSuccess = async (credentialResponse: any) => {
+    setLoading(true);
+    setError('');
+    try {
+      await googleLogin(credentialResponse.credential);
+      router.push('/');
+    } catch (err: any) {
+      setError(err.message || 'Google signup failed');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -73,6 +90,24 @@ export default function RegisterPage() {
         </div>
 
         <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-2xl">
+          
+          {/* Added: Google Sign Up Button */}
+          <div className="w-full flex justify-center mb-4">
+            <GoogleLogin
+              onSuccess={handleGoogleSuccess}
+              onError={() => setError("Google Sign-up failed")}
+              theme="filled_black"
+              shape="pill"
+              text="signup_with"
+            />
+          </div>
+
+          <div className="flex items-center gap-3 mb-4">
+            <div className="flex-1 h-px bg-slate-800" />
+            <span className="text-xs text-slate-600">or sign up with email</span>
+            <div className="flex-1 h-px bg-slate-800" />
+          </div>
+
           <form onSubmit={handleRegister} className="space-y-3">
             <div>
               <label className="text-xs text-slate-400 font-medium mb-1.5 block">Full Name</label>
@@ -125,7 +160,6 @@ export default function RegisterPage() {
               </div>
             )}
 
-            {/* GDPR consent — required in Germany */}
             <div className="flex items-start gap-3 pt-1">
               <input type="checkbox" required id="gdpr" className="mt-0.5 accent-blue-600 shrink-0" />
               <label htmlFor="gdpr" className="text-[11px] text-slate-500 leading-relaxed cursor-pointer">
