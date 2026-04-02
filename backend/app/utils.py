@@ -1,6 +1,7 @@
 import logging
 import sys
 
+
 def setup_logging():
     logger = logging.getLogger("veritas")
     if not logger.handlers:
@@ -8,9 +9,10 @@ def setup_logging():
         formatter = logging.Formatter(
             '%(asctime)s - %(levelname)s - [%(name)s] [%(filename)s:%(lineno)d] - %(message)s'
         )
-        console_handler = logging.StreamHandler(sys.stdout)
-        console_handler.setFormatter(formatter)
-        logger.addHandler(console_handler)
+        handler = logging.StreamHandler(sys.stdout)
+        handler.setFormatter(formatter)
+        logger.addHandler(handler)
     return logger
+
 
 log = setup_logging()
