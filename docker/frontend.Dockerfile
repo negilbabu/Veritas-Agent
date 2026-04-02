@@ -17,6 +17,8 @@ ARG NEXT_PUBLIC_API_URL
 # Set them as environment variables for the build process
 ENV NEXT_PUBLIC_GOOGLE_CLIENT_ID=$NEXT_PUBLIC_GOOGLE_CLIENT_ID
 ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
+# ADD THIS LINE TO DEBUG:
+RUN echo "DEBUG CHECK - Google ID is: ${NEXT_PUBLIC_GOOGLE_CLIENT_ID}"
 # Build the application
 RUN npm run build
 

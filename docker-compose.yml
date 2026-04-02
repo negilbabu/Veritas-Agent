@@ -31,8 +31,6 @@ services:
       - qdrant
 
   frontend:
-    env_file:
-      - .env
     build:
       context: .
       dockerfile: docker/frontend.Dockerfile
