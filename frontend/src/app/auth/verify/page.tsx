@@ -1,12 +1,10 @@
 "use client";
-import { Suspense } from 'react';
-import { useEffect, useState } from 'react';
+import { Suspense, useEffect, useState } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { NEXT_PUBLIC_API_URL } from '../../../../config';
 
 type Status = 'loading' | 'success' | 'error' | 'already';
 
-// Inner component that uses useSearchParams — must be wrapped in Suspense
 function VerifyInner() {
   const searchParams = useSearchParams();
   const router       = useRouter();
@@ -23,12 +21,28 @@ function VerifyInner() {
 
     const verify = async () => {
       try {
-        const res  = await fetch(`${NEXT_PUBLIC_API_URL}/auth/verify?token=${token}`);
+        // Strip any accidental trailing slashes from your .env variable to prevent //auth/verify
+        const cleanApiUrl = NEXT_PUBLIC_API_URL.replace(/\/$/, '');
+        const res  = await fetch(`${cleanApiUrl}/auth/verify?token=${token}`);
+        
+        // Prevent fatal JSON parse crash if server returns an HTML 502/503 error
+        const contentType = res.headers.get("content-type");
+        if (contentType && !contentType.includes("application/json")) {
+           throw new Error("The server is currently unavailable. Please try again.");
+        }
+
         const data = await res.json();
 
         if (!res.ok) {
           setStatus('error');
-          setMessage(data.detail || 'Verification failed. The link may have expired.');
+          // PREVENT REACT CRASH: Ensure the message is ALWAYS a string, never an Object/Array
+          let errMsg = 'Verification failed. The link may have expired.';
+          if (typeof data.detail === 'string') {
+            errMsg = data.detail;
+          } else if (Array.isArray(data.detail) && data.detail[0]?.msg) {
+            errMsg = data.detail[0].msg; // Catches FastAPI 422 Validation Arrays
+          }
+          setMessage(errMsg);
           return;
         }
 
@@ -38,20 +52,25 @@ function VerifyInner() {
         }
 
         if (data.access_token) {
-          localStorage.setItem('veritas_token', data.access_token);
-          localStorage.setItem('veritas_user', JSON.stringify(data.user));
+          try {
+            localStorage.setItem('veritas_token', data.access_token);
+            localStorage.setItem('veritas_user', JSON.stringify(data.user));
+          } catch (storageError) {
+             // Prevents crash if user opens link in a strict in-app browser (like Gmail on iOS)
+            console.error("Local storage is disabled or full");
+          }
         }
 
         setStatus('success');
         setTimeout(() => router.push('/'), 2000);
-      } catch {
+      } catch (err: any) {
         setStatus('error');
-        setMessage('An unexpected error occurred.');
+        setMessage(err.message || 'An unexpected error occurred while verifying.');
       }
     };
 
     verify();
-  }, [searchParams]);
+  }, [searchParams, router]);
 
   return (
     <div className="min-h-screen bg-slate-950 flex items-center justify-center px-4">
@@ -116,7 +135,6 @@ function VerifyInner() {
   );
 }
 
-// Outer page wraps inner in Suspense — required by Next.js for useSearchParams
 export default function VerifyPage() {
   return (
     <Suspense fallback={
