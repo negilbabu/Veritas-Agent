@@ -32,9 +32,10 @@ def _send(to: str, subject: str, html: str):
     except Exception as e:
         log.error(f"[email] Failed to send to {to}: {e}")
 
-
 def send_verification_email(to: str, name: str, token: str):
-    f"{FRONTEND_URL.rstrip('/')}/auth/verify?token={token}"
+    # This line was missing or broken in your last deploy
+    link = f"{FRONTEND_URL.rstrip('/')}/auth/verify?token={token}"
+    
     html = f"""
     <div style="font-family:sans-serif;max-width:520px;margin:auto;padding:32px;background:#0f172a;color:#e2e8f0;border-radius:12px;">
       <div style="text-align:center;margin-bottom:24px;">
