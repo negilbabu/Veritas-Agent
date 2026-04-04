@@ -3,6 +3,7 @@ import { useState, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
 import ProfileModal from '@/components/ProfileModal';
+import Image from 'next/image';
 
 interface AppHeaderProps {
   sidebarCollapsed: boolean;
@@ -51,10 +52,14 @@ export default function AppHeader({ sidebarCollapsed, onToggleSidebar }: AppHead
 
           <div className="h-6 w-px bg-slate-700/60" />
 
-          <div className="flex items-center gap-2.5">
-            <div className="w-7 h-7 rounded-lg bg-blue-600 flex items-center justify-center shadow-lg shadow-blue-900/50 shrink-0">
-              <span className="text-[11px] font-black text-white tracking-tight">V</span>
-            </div>
+          <div className="flex items-center gap-3">
+            <Image 
+              src="/icon.svg" 
+              alt="Veritas Logo" 
+              width={38} 
+              height={42} 
+              className="shrink-0 drop-shadow-md rounded-lg" 
+            />
             <div className="flex flex-col leading-none">
               <span className="text-sm font-bold text-slate-100 tracking-widest uppercase">Veritas</span>
               <span className="text-[9px] text-blue-400/70 font-medium uppercase tracking-widest">Clinical Intelligence</span>

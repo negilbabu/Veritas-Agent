@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { GoogleLogin } from '@react-oauth/google';
 import { useAuth } from '@/hooks/useAuth';
+import Image from 'next/image';
 
 export default function RegisterPage() {
   const router  = useRouter();
@@ -82,9 +83,13 @@ export default function RegisterPage() {
 
         {/* Logo */}
         <div className="flex flex-col items-center mb-8">
-          <div className="w-12 h-12 rounded-xl bg-blue-600 flex items-center justify-center shadow-2xl shadow-blue-900/60 mb-4">
-            <span className="text-xl font-black text-white">V</span>
-          </div>
+          <Image 
+            src="/veritas.svg" 
+            alt="Veritas Logo" 
+            width={32} 
+            height={32} 
+            className="shrink-0" 
+          />
           <h1 className="text-2xl font-black text-white tracking-tight">Create an account</h1>
           <p className="text-slate-500 text-sm mt-1">Clinical Intelligence Agent</p>
         </div>

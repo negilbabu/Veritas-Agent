@@ -8,6 +8,7 @@ import { useChat } from '@/hooks/useChat';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { NEXT_PUBLIC_API_URL } from '../../../../config';
+import Image from 'next/image';
 
 export default function ChatPage() {
   const { id: sessionId } = useParams();
@@ -188,10 +189,16 @@ export default function ChatPage() {
 
               // Assistant bubble — left
               return (
-                <div key={i} className="flex justify-start gap-3">
-                  <div className="shrink-0 w-7 h-7 rounded-full bg-blue-600/20 border border-blue-500/30 flex items-center justify-center mt-0.5">
-                    <span className="text-[10px] font-bold text-blue-400">V</span>
-                  </div>
+                
+                
+                <div key={i} className="flex items-start mx-auto mb-6 gap-4">
+                  <Image 
+                    src="/icon.svg" 
+                    alt="Veritas Logo" 
+                    width={25} 
+                    height={25} 
+                    className="shrink-0 mt-1" 
+                  />
                   <div className="max-w-[75%] sm:max-w-[65%] lg:max-w-[55%] bg-slate-900 border border-slate-800 px-4 py-3 rounded-2xl rounded-tl-sm text-sm leading-relaxed shadow-md break-words">
                     <div className="prose prose-invert prose-sm max-w-none prose-p:my-1.5 prose-p:leading-relaxed prose-headings:text-slate-100 prose-headings:font-semibold prose-strong:text-slate-100 prose-code:text-blue-300 prose-code:bg-slate-800 prose-code:px-1 prose-code:rounded prose-pre:bg-slate-800 prose-pre:border prose-pre:border-slate-700 prose-ul:my-1.5 prose-ol:my-1.5 prose-li:my-0.5 prose-a:text-blue-400 prose-a:no-underline hover:prose-a:underline">
                       <ReactMarkdown remarkPlugins={[remarkGfm]}>{m.text}</ReactMarkdown>
@@ -211,9 +218,13 @@ export default function ChatPage() {
             {/* Upload loader */}
             {uploading && (
               <div className="flex justify-start gap-3">
-                <div className="shrink-0 w-7 h-7 rounded-full bg-blue-600/20 border border-blue-500/30 flex items-center justify-center">
-                  <span className="text-[10px] font-bold text-blue-400">V</span>
-                </div>
+                <Image 
+                  src="/icon.svg" 
+                  alt="Veritas Logo" 
+                  width={48} 
+                  height={48} 
+                  className="mx-auto mb-6 drop-shadow-lg" 
+                />
                 <div className="bg-slate-900 border border-slate-800 px-4 py-3 rounded-2xl rounded-tl-sm flex items-center gap-2.5">
                   <svg className="animate-spin w-3.5 h-3.5 text-blue-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
@@ -227,9 +238,13 @@ export default function ChatPage() {
             {/* Thinking loader */}
             {loading && !uploading && (
               <div className="flex justify-start gap-3">
-                <div className="shrink-0 w-7 h-7 rounded-full bg-blue-600/20 border border-blue-500/30 flex items-center justify-center">
-                  <span className="text-[10px] font-bold text-blue-400">V</span>
-                </div>
+                <Image 
+        src="/icon.svg" 
+        alt="Veritas Logo" 
+        width={32} 
+        height={32} 
+        className="shrink-0" 
+      />
                 <div className="bg-slate-900 border border-slate-800 px-4 py-3 rounded-2xl rounded-tl-sm flex items-center gap-1.5">
                   <span className="w-1.5 h-1.5 bg-blue-400 rounded-full animate-bounce [animation-delay:-0.3s]" />
                   <span className="w-1.5 h-1.5 bg-blue-400 rounded-full animate-bounce [animation-delay:-0.15s]" />

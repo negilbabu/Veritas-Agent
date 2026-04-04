@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '@/hooks/useAuth';
 import Toast from '@/components/Toast';
+import Image from 'next/image';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -49,9 +50,16 @@ export default function LoginPage() {
 
         {/* Logo */}
         <div className="flex flex-col items-center mb-8">
-          <div className="w-12 h-12 rounded-xl bg-blue-600 flex items-center justify-center shadow-2xl shadow-blue-900/60 mb-4">
+          {/* <div className="w-12 h-12 rounded-xl bg-blue-600 flex items-center justify-center shadow-2xl shadow-blue-900/60 mb-4">
             <span className="text-xl font-black text-white">V</span>
-          </div>
+          </div> */}
+          <Image 
+            src="/veritas.svg" 
+            alt="Veritas Logo" 
+            width={48} 
+            height={48} 
+            className="mx-auto mb-6 drop-shadow-lg" 
+          />
           <h1 className="text-2xl font-black text-white tracking-tight">Sign in to Veritas</h1>
           <p className="text-slate-500 text-sm mt-1">Clinical Intelligence Agent</p>
         </div>
