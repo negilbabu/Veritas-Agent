@@ -4,6 +4,7 @@ from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from app.utils import log
 
+# ── Environment Variables ─────────────────────────────────────────────────────
 SMTP_HOST     = os.getenv("SMTP_HOST", "smtp.gmail.com")
 SMTP_PORT     = int(os.getenv("SMTP_PORT", 587))
 SMTP_USER     = os.getenv("SMTP_USER", "")
@@ -12,16 +13,46 @@ FROM_NAME     = os.getenv("FROM_NAME", "Veritas")
 FROM_EMAIL    = os.getenv("FROM_EMAIL", SMTP_USER)
 FRONTEND_URL  = os.getenv("FRONTEND_URL", "http://localhost:3000")
 
+# NEW: Custom Logo URL from .env
+CUSTOM_LOGO_URL = os.getenv("LOGO_URL", "").strip()
+
+
+# ── Helper Functions ──────────────────────────────────────────────────────────
+
+def _get_base_url() -> str:
+    """Safely extracts the primary frontend URL for clickable links."""
+    if not FRONTEND_URL:
+        return "http://localhost:3000"
+    # Prevents redirect crashes if multiple URLs are provided (e.g. Netlify + Custom Domain)
+    return FRONTEND_URL.split(",")[0].strip().rstrip("/")
+
+def _get_logo_url(base_url: str) -> str:
+    """
+    Returns the safest Logo URL. 
+    1. Prioritizes the explicit LOGO_URL from .env.
+    2. Fallback to production URL if testing locally (to prevent broken Gmail images).
+    3. Fallback to standard base_url + /veritas.svg.
+    """
+    if CUSTOM_LOGO_URL:
+        return CUSTOM_LOGO_URL
+        
+    if "localhost" in base_url or "127.0.0.1" in base_url:
+        return "https://veritas.negilbabu.com/veritas.svg"
+        
+    return f"{base_url}/veritas.svg"
 
 def _send(to: str, subject: str, html: str):
+    """Core SMTP sending logic."""
     if not SMTP_USER or not SMTP_PASSWORD:
         log.warning("[email] SMTP not configured — skipping send")
         return
+        
     msg = MIMEMultipart("alternative")
     msg["Subject"] = subject
     msg["From"]    = f"{FROM_NAME} <{FROM_EMAIL}>"
     msg["To"]      = to
     msg.attach(MIMEText(html, "html"))
+    
     try:
         with smtplib.SMTP(SMTP_HOST, SMTP_PORT) as s:
             s.ehlo()
@@ -32,14 +63,18 @@ def _send(to: str, subject: str, html: str):
     except Exception as e:
         log.error(f"[email] Failed to send to {to}: {e}")
 
+
+# ── Email Templates ───────────────────────────────────────────────────────────
+
 def send_verification_email(to: str, name: str, token: str):
-    # This line was missing or broken in your last deploy
-    link = f"{FRONTEND_URL.rstrip('/')}/auth/verify?token={token}"
+    base_url = _get_base_url()
+    link = f"{base_url}/auth/verify?token={token}"
+    logo_url = _get_logo_url(base_url)
     
     html = f"""
     <div style="font-family:sans-serif;max-width:520px;margin:auto;padding:32px;background:#0f172a;color:#e2e8f0;border-radius:12px;">
       <div style="text-align:center;margin-bottom:24px;">
-        <div style="display:inline-flex;align-items:center;justify-content:center;width:48px;height:48px;background:#2563eb;border-radius:10px;font-size:20px;font-weight:900;color:#fff;margin-bottom:12px;">V</div>
+        <img src="{logo_url}" alt="Veritas Logo" style="width:48px;height:48px;margin-bottom:12px;display:inline-block;" />
         <h1 style="margin:8px 0 4px;font-size:20px;color:#fff;font-weight:800;">Verify your email</h1>
         <p style="margin:0;font-size:13px;color:#94a3b8;letter-spacing:0.05em;text-transform:uppercase;">Veritas · Clinical Intelligence</p>
       </div>
@@ -61,16 +96,19 @@ def send_verification_email(to: str, name: str, token: str):
 
 
 def send_welcome_email(to: str, name: str):
+    base_url = _get_base_url()
+    logo_url = _get_logo_url(base_url)
+
     html = f"""
     <div style="font-family:sans-serif;max-width:520px;margin:auto;padding:32px;background:#0f172a;color:#e2e8f0;border-radius:12px;">
       <div style="text-align:center;margin-bottom:24px;">
-        <div style="display:inline-flex;align-items:center;justify-content:center;width:48px;height:48px;background:#2563eb;border-radius:10px;font-size:20px;font-weight:900;color:#fff;margin-bottom:12px;">V</div>
+        <img src="{logo_url}" alt="Veritas Logo" style="width:48px;height:48px;margin-bottom:12px;display:inline-block;" />
         <h1 style="margin:8px 0 4px;font-size:20px;color:#fff;font-weight:800;">You're in, {name}!</h1>
         <p style="margin:0;font-size:13px;color:#94a3b8;">Welcome to Veritas</p>
       </div>
       <p style="font-size:14px;color:#cbd5e1;line-height:1.6;">Your account is now active. You can upload clinical documents, ask questions, and access your full chat history — all securely stored.</p>
       <div style="text-align:center;margin:32px 0;">
-        <a href="{FRONTEND_URL}" style="background:#2563eb;color:#fff;text-decoration:none;padding:14px 32px;border-radius:10px;font-size:14px;font-weight:700;display:inline-block;">Open Veritas →</a>
+        <a href="{base_url}" style="background:#2563eb;color:#fff;text-decoration:none;padding:14px 32px;border-radius:10px;font-size:14px;font-weight:700;display:inline-block;">Open Veritas →</a>
       </div>
       <div style="background:#1e293b;border-radius:8px;padding:16px;margin:16px 0;">
         <p style="margin:0 0 8px;font-size:12px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:0.05em;">Your data rights (GDPR)</p>
@@ -84,8 +122,14 @@ def send_welcome_email(to: str, name: str):
 
 
 def send_password_changed_email(to: str, name: str):
+    base_url = _get_base_url()
+    logo_url = _get_logo_url(base_url)
+
     html = f"""
     <div style="font-family:sans-serif;max-width:520px;margin:auto;padding:32px;background:#0f172a;color:#e2e8f0;border-radius:12px;">
+      <div style="text-align:center;margin-bottom:24px;">
+        <img src="{logo_url}" alt="Veritas Logo" style="width:48px;height:48px;margin-bottom:12px;display:inline-block;" />
+      </div>
       <h2 style="color:#fff;margin-top:0;">Password Changed</h2>
       <p style="font-size:14px;color:#cbd5e1;line-height:1.6;">Hi <strong style="color:#fff;">{name}</strong>,</p>
       <p style="font-size:14px;color:#cbd5e1;line-height:1.6;">Your Veritas password was successfully updated. If you made this change, no further action is needed.</p>

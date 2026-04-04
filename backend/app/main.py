@@ -91,6 +91,13 @@ def _fallback_title(text: str) -> str:
         clean = clean[:-4]
     return (clean[:30] + "…") if len(clean) > 30 else clean
 
+# ── /health check (render) ───────────────────────────────────────────────────────────────────
+@app.get("/api/health", tags=["Health"])
+async def health_check():
+    """
+    Dedicated health check endpoint for monitoring uptime.
+    """
+    return {"status": "ok", "message": "Server is up and running"}
 
 # ── /upload ───────────────────────────────────────────────────────────────────
 @app.post("/upload")
