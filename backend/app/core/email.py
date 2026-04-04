@@ -1,4 +1,5 @@
 import os
+import socket
 import smtplib
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
@@ -12,37 +13,36 @@ SMTP_PASSWORD = os.getenv("SMTP_PASSWORD", "")
 FROM_NAME     = os.getenv("FROM_NAME", "Veritas")
 FROM_EMAIL    = os.getenv("FROM_EMAIL", SMTP_USER)
 FRONTEND_URL  = os.getenv("FRONTEND_URL", "http://localhost:3000")
-
-# NEW: Custom Logo URL from .env
 CUSTOM_LOGO_URL = os.getenv("LOGO_URL", "").strip()
 
+# ── CRITICAL FIX: Force IPv4 for SMTP ─────────────────────────────────────────
+# Render does not support outbound IPv6. If Python tries to resolve Gmail via IPv6,
+# it hangs for 2 minutes and returns [Errno 101] Network is unreachable.
+# This forces the socket to ONLY use IPv4 (AF_INET) for the SMTP host.
+_orig_getaddrinfo = socket.getaddrinfo
 
-# ── Helper Functions ──────────────────────────────────────────────────────────
+def _ipv4_getaddrinfo(host, port, family=0, type=0, proto=0, flags=0):
+    if host == SMTP_HOST:
+        family = socket.AF_INET # Strictly force IPv4
+    return _orig_getaddrinfo(host, port, family, type, proto, flags)
+
+socket.getaddrinfo = _ipv4_getaddrinfo
+# ──────────────────────────────────────────────────────────────────────────────
+
 
 def _get_base_url() -> str:
-    """Safely extracts the primary frontend URL for clickable links."""
     if not FRONTEND_URL:
         return "http://localhost:3000"
-    # Prevents redirect crashes if multiple URLs are provided (e.g. Netlify + Custom Domain)
     return FRONTEND_URL.split(",")[0].strip().rstrip("/")
 
 def _get_logo_url(base_url: str) -> str:
-    """
-    Returns the safest Logo URL. 
-    1. Prioritizes the explicit LOGO_URL from .env.
-    2. Fallback to production URL if testing locally (to prevent broken Gmail images).
-    3. Fallback to standard base_url + /veritas.svg.
-    """
     if CUSTOM_LOGO_URL:
         return CUSTOM_LOGO_URL
-        
     if "localhost" in base_url or "127.0.0.1" in base_url:
         return "https://veritas.negilbabu.com/veritas.svg"
-        
     return f"{base_url}/veritas.svg"
 
 def _send(to: str, subject: str, html: str):
-    """Core SMTP sending logic."""
     if not SMTP_USER or not SMTP_PASSWORD:
         log.warning("[email] SMTP not configured — skipping send")
         return
@@ -54,7 +54,8 @@ def _send(to: str, subject: str, html: str):
     msg.attach(MIMEText(html, "html"))
     
     try:
-        with smtplib.SMTP(SMTP_HOST, SMTP_PORT, source_address=('0.0.0.0', 0)) as s:
+        # Added timeout=15 so if the network fails, it fails instantly instead of hanging your server
+        with smtplib.SMTP(SMTP_HOST, SMTP_PORT, timeout=15) as s:
             s.ehlo()
             s.starttls()
             s.login(SMTP_USER, SMTP_PASSWORD)
@@ -62,9 +63,6 @@ def _send(to: str, subject: str, html: str):
         log.info(f"[email] Sent '{subject}' → {to}")
     except Exception as e:
         log.error(f"[email] Failed to send to {to}: {e}")
-
-
-# ── Email Templates ───────────────────────────────────────────────────────────
 
 def send_verification_email(to: str, name: str, token: str):
     base_url = _get_base_url()
@@ -94,7 +92,6 @@ def send_verification_email(to: str, name: str, token: str):
     """
     _send(to, "Verify your Veritas account", html)
 
-
 def send_welcome_email(to: str, name: str):
     base_url = _get_base_url()
     logo_url = _get_logo_url(base_url)
@@ -119,7 +116,6 @@ def send_welcome_email(to: str, name: str):
     </div>
     """
     _send(to, "Welcome to Veritas 🎉", html)
-
 
 def send_password_changed_email(to: str, name: str):
     base_url = _get_base_url()
