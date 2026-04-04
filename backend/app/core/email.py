@@ -54,7 +54,7 @@ def _send(to: str, subject: str, html: str):
     msg.attach(MIMEText(html, "html"))
     
     try:
-        with smtplib.SMTP(SMTP_HOST, SMTP_PORT) as s:
+        with smtplib.SMTP(SMTP_HOST, SMTP_PORT, source_address=('0.0.0.0', 0)) as s:
             s.ehlo()
             s.starttls()
             s.login(SMTP_USER, SMTP_PASSWORD)
