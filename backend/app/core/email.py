@@ -54,12 +54,18 @@ def _send(to: str, subject: str, html: str):
     msg.attach(MIMEText(html, "html"))
     
     try:
-        # Added timeout=15 so if the network fails, it fails instantly instead of hanging your server
-        with smtplib.SMTP(SMTP_HOST, SMTP_PORT, timeout=15) as s:
-            s.ehlo()
-            s.starttls()
-            s.login(SMTP_USER, SMTP_PASSWORD)
-            s.sendmail(FROM_EMAIL, to, msg.as_string())
+        # If using port 465, we must use SMTP_SSL instead of standard SMTP + STARTTLS
+        if SMTP_PORT == 465:
+            with smtplib.SMTP_SSL(SMTP_HOST, SMTP_PORT, timeout=15) as s:
+                s.login(SMTP_USER, SMTP_PASSWORD)
+                s.sendmail(FROM_EMAIL, to, msg.as_string())
+        else:
+            with smtplib.SMTP(SMTP_HOST, SMTP_PORT, timeout=15) as s:
+                s.ehlo()
+                s.starttls()
+                s.login(SMTP_USER, SMTP_PASSWORD)
+                s.sendmail(FROM_EMAIL, to, msg.as_string())
+                
         log.info(f"[email] Sent '{subject}' → {to}")
     except Exception as e:
         log.error(f"[email] Failed to send to {to}: {e}")

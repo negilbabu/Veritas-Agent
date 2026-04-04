@@ -7,6 +7,7 @@ import AppHeader from '@/components/AppHeader';
 import Toast from '@/components/Toast';
 import { useChat } from '@/hooks/useChat';
 import { NEXT_PUBLIC_API_URL } from '../../config';
+import Image from 'next/image';
 
 export default function Home() {
   const router = useRouter();
@@ -70,9 +71,13 @@ export default function Home() {
         <main className="flex-1 flex flex-col items-center justify-center p-6">
           {/* Brand mark */}
           <div className="flex flex-col items-center mb-10">
-            <div className="w-14 h-14 rounded-2xl bg-blue-600 flex items-center justify-center shadow-2xl shadow-blue-900/60 mb-5">
-              <span className="text-2xl font-black text-white tracking-tight">V</span>
-            </div>
+            <Image 
+              src="/veritas.svg" 
+              alt="Veritas Logo" 
+              width={62} 
+              height={62} 
+              className="shrink-0" 
+            />
             <h1 className="text-5xl font-black text-slate-100 tracking-tighter mb-2">VERITAS</h1>
             <p className="text-slate-500 font-mono text-sm tracking-widest uppercase">Clinical Intelligence Agent</p>
           </div>
