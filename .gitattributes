@@ -1,0 +1,5 @@
+# Ignore all frontend files for language statistics
+frontend/**/* linguist-detectable=false
+
+# Alternatively, just ignore the large library files
+frontend/package-lock.json linguist-generated
