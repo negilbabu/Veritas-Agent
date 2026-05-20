@@ -7,8 +7,6 @@ def test_register_success(client, mocker):
     mocker.patch("app.api.auth.get_user_by_email", return_value=None)
     mocker.patch("app.api.auth.create_user", return_value=MagicMock(id="123"))
     mocker.patch("app.api.auth.send_verification_email")
-    
-    # FIX: Patch at source to handle the local import path strategy
     mocker.patch("app.services.database.claim_session_history")
     
     response = client.post("/auth/register", json={
@@ -21,7 +19,6 @@ def test_register_short_password(client):
     assert response.status_code == 422
 
 def test_register_long_password(client):
-    # Passwords over 72 bytes should trigger validation errors
     response = client.post("/auth/register", json={"email": "a@b.com", "name": "A", "password": "x" * 75})
     assert response.status_code == 422
 
@@ -56,6 +53,20 @@ def test_verify_email_already_verified(client, mocker, mock_user_obj):
     assert response.status_code == 200
     assert response.json()["already_verified"] is True
 
+def test_verify_email_invalid_token(client, mocker):
+    mocker.patch("app.api.auth.decode_token", return_value=None)
+    response = client.get("/auth/verify", params={"token": "bad-token"})
+    assert response.status_code == 400
+
+def test_verify_email_user_not_found(client, mocker):
+    mocker.patch("app.api.auth.decode_token", return_value={"sub": "missing", "purpose": "verify_email"})
+    mock_db = MagicMock()
+    mocker.patch("app.api.auth.SessionLocal", return_value=mock_db)
+    mock_db.query.return_value.filter.return_value.first.return_value = None
+    
+    response = client.get("/auth/verify", params={"token": "valid-token"})
+    assert response.status_code == 404
+
 def test_login_success(client, mocker, mock_user_obj):
     mocker.patch("app.api.auth.get_user_by_email", return_value=mock_user_obj)
     mocker.patch("app.api.auth.verify_password", return_value=True)
@@ -64,16 +75,44 @@ def test_login_success(client, mocker, mock_user_obj):
     response = client.post("/auth/login", json={"email": "t@t.com", "password": "pw"})
     assert response.status_code == 200
 
-def test_login_invalid_password(client, mocker, mock_user_obj):
+def test_login_unverified_email(client, mocker, mock_user_obj):
+    mock_user_obj.is_verified = False
     mocker.patch("app.api.auth.get_user_by_email", return_value=mock_user_obj)
-    mocker.patch("app.api.auth.verify_password", return_value=False)
-    response = client.post("/auth/login", json={"email": "t@t.com", "password": "wrong"})
+    mocker.patch("app.api.auth.verify_password", return_value=True)
+    
+    response = client.post("/auth/login", json={"email": "t@t.com", "password": "pw"})
+    assert response.status_code == 403
+
+def test_login_invalid_user(client, mocker):
+    mocker.patch("app.api.auth.get_user_by_email", return_value=None)
+    response = client.post("/auth/login", json={"email": "t@t.com", "password": "pw"})
     assert response.status_code == 401
+
+def test_google_auth_success(client, mocker, mock_user_obj):
+    mocker.patch("app.api.auth.GOOGLE_CLIENT_ID", "configured-id")
+    mock_google_id_token = MagicMock()
+    mock_google_id_token.verify_oauth2_token.return_value = {
+        "sub": "g-123", "email": "g@g.com", "name": "Google User"
+    }
+    mocker.patch("google.oauth2.id_token.verify_oauth2_token", return_value=mock_google_id_token.verify_oauth2_token.return_value)
+    mocker.patch("google.auth.transport.requests.Request")
+    
+    mock_db = MagicMock()
+    mocker.patch("app.api.auth.SessionLocal", return_value=mock_db)
+    mock_db.query.return_value.filter.return_value.first.return_value = mock_user_obj
+    mocker.patch("app.services.database.claim_session_history")
+    
+    response = client.post("/auth/google", json={"id_token": "token", "session_id": "sess-abc"})
+    assert response.status_code == 200
 
 def test_google_auth_not_configured(client, mocker):
     mocker.patch("app.api.auth.GOOGLE_CLIENT_ID", "")
     response = client.post("/auth/google", json={"id_token": "token"})
     assert response.status_code == 501
+
+def test_get_current_user_dependency_failures(client):
+    response = client.get("/auth/me")
+    assert response.status_code == 401
 
 def test_get_me(client, mock_user_obj):
     client.app.dependency_overrides[get_current_user] = lambda: mock_user_obj
@@ -81,15 +120,22 @@ def test_get_me(client, mock_user_obj):
     assert response.status_code == 200
     assert response.json()["email"] == "test@test.com"
 
-def test_change_password(client, mocker, mock_user_obj):
+def test_change_password_google_account(client, mock_user_obj):
+    mock_user_obj.provider = "google"
     client.app.dependency_overrides[get_current_verified_user] = lambda: mock_user_obj
-    mock_db = MagicMock()
-    mocker.patch("app.api.auth.SessionLocal", return_value=mock_db)
-    mocker.patch("app.api.auth.verify_password", return_value=True)
-    mocker.patch("app.api.auth.send_password_changed_email")
-    
     response = client.patch("/auth/me/password", json={"current_password": "old", "new_password": "newpass123"})
-    assert response.status_code == 200
+    assert response.status_code == 403
+
+def test_change_password_invalid_current(client, mocker, mock_user_obj):
+    client.app.dependency_overrides[get_current_verified_user] = lambda: mock_user_obj
+    mocker.patch("app.api.auth.verify_password", return_value=False)
+    response = client.patch("/auth/me/password", json={"current_password": "wrong", "new_password": "newpass123"})
+    assert response.status_code == 401
+
+def test_update_retention_invalid(client, mock_user_obj):
+    client.app.dependency_overrides[get_current_verified_user] = lambda: mock_user_obj
+    response = client.patch("/auth/me/retention", json={"data_retention_days": "invalid-value"})
+    assert response.status_code == 422
 
 def test_delete_account_gdpr(client, mocker, mock_user_obj):
     client.app.dependency_overrides[get_current_verified_user] = lambda: mock_user_obj
