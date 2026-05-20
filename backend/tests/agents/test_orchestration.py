@@ -2,15 +2,17 @@ import pytest
 from unittest.mock import MagicMock, patch
 from app.agents.graph import research_router, app_instance
 
-def test_research_router_fallback():
-    # Test routing logic when the conversation state context is empty or unhandled
-    state = {"messages": []}
+def test_research_router_respond_path():
+    mock_msg = MagicMock(content="Thank you, assistant!")
+    state = {"messages": [mock_msg]}
     assert research_router(state) == "respond"
 
-@patch("app.agents.graph.vector_service.client.search")
-def test_graph_execution_flow(mock_search):
-    # Verify synchronous mock tracking across LangGraph state steps safely
-    mock_search.return_value = [
-        MagicMock(payload={"text": "Evidence summary", "source": "report.pdf"})
-    ]
+def test_research_router_retrieve_keywords_path():
+    keywords = ["summarize", "clinical", "report", "patient", "data", "history", "diagnose"]
+    for word in keywords:
+        mock_msg = MagicMock(content=f"Can you please {word} this document contents?")
+        state = {"messages": [mock_msg]}
+        assert research_router(state) == "retrieve"
+
+def test_graph_state_compile_validation():
     assert app_instance is not None

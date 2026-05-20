@@ -1,6 +1,6 @@
 import pytest
 from unittest.mock import patch, MagicMock
-from app.main import get_optional_user_id
+from app.main import get_optional_user_id, _fallback_title
 
 def test_health_check(client):
     response = client.get("/api/health")
@@ -23,7 +23,7 @@ def test_generate_chat_title_function(mock_invoke):
     
     import asyncio
     title = asyncio.run(generate_chat_title("clinical_notes.pdf", source="file"))
-    assert "clinical" in title.lower() or "generated" in title.lower()
+    assert "notes" in title.lower() or "generated" in title.lower()
 
 @patch("app.main.app_instance.ainvoke")
 @patch("app.main.generate_chat_title")
@@ -67,7 +67,6 @@ def test_fetch_history_access_denied(mock_history, client):
     mock_msg = MagicMock(user_id="owner-id")
     mock_history.return_value = [mock_msg]
     
-    # FIX: Override get_optional_user_id to ensure the route detects the user mismatch
     client.app.dependency_overrides[get_optional_user_id] = lambda: "unauthorized-id"
     
     response = client.get("/sessions/sess-1/history")
@@ -82,6 +81,9 @@ def test_delete_session(client, mocker):
     assert response.status_code == 200
 
 def test_fallback_title_logic():
-    from app.main import _fallback_title
     assert _fallback_title("clinical_notes.pdf") == "clinical notes"
     assert _fallback_title("x" * 50) == "x" * 30 + "…"
+
+def test_get_optional_user_id_no_credentials():
+    # Covers the initial fallback exit branches inside main.py
+    assert get_optional_user_id(None) is None
