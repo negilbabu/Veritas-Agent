@@ -72,7 +72,7 @@ describe('Sidebar Component', () => {
     expect(mockPush).not.toHaveBeenCalled();
   });
 
-  it('redirects to the guest auth workspace route when an anonymous guest clicks the New Chat button', async () => {
+  it('opens the guest modal when an anonymous guest clicks the New Chat button and handles actions', async () => {
     // Simulate an unauthenticated anonymous guest session
     (useAuth as jest.Mock).mockReturnValue({
       user: null,
@@ -83,12 +83,21 @@ describe('Sidebar Component', () => {
       render(<Sidebar collapsed={false} onToggle={jest.fn()} onNewChat={mockOnNewChat} />);
     });
 
+    // 1. Click the New Chat button
     const newChatBtn = screen.getByText('+ New Chat');
     await act(async () => {
       fireEvent.click(newChatBtn);
     });
     
-    expect(mockPush).toHaveBeenCalledWith('/auth/guest');
-    expect(mockOnNewChat).not.toHaveBeenCalled();
+    // 2. Verify the modal opened successfully
+    expect(screen.getByText('Save your chat history?')).toBeInTheDocument();
+    
+    // 3. Test "Register & Save Chat" modal action correctly pushes to /auth/register
+    const registerBtn = screen.getByText('Register & Save Chat');
+    await act(async () => {
+      fireEvent.click(registerBtn);
+    });
+    
+    expect(mockPush).toHaveBeenCalledWith('/auth/register');
   });
 });
