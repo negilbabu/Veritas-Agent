@@ -1,4 +1,4 @@
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
 import Sidebar from '@/components/Sidebar';
 import { useAuth } from '@/hooks/useAuth';
 import { useRouter, usePathname } from 'next/navigation';
@@ -7,51 +7,88 @@ jest.mock('@/hooks/useAuth', () => ({
   useAuth: jest.fn(),
 }));
 
+const mockPush = jest.fn();
 jest.mock('next/navigation', () => ({
-  useRouter: jest.fn(),
+  useRouter: () => ({
+    push: mockPush,
+    replace: jest.fn(),
+    prefetch: jest.fn(),
+    back: jest.fn(),
+  }),
   usePathname: jest.fn(),
 }));
 
 describe('Sidebar Component', () => {
-  const mockPush = jest.fn();
+  const mockOnNewChat = jest.fn();
 
   beforeEach(() => {
     jest.clearAllMocks();
-    global.fetch = jest.fn();
-    (useRouter as jest.Mock).mockReturnValue({ push: mockPush });
-    (usePathname as jest.Mock).mockReturnValue('/chat/session-123');
-    (useAuth as jest.Mock).mockReturnValue({
-      user: { id: 'u1', name: 'Dr. Negil' },
-      loading: false
-    });
-  });
-
-  it('renders chat action links, workspace buttons, and historical item nodes accurately', async () => {
-    (global.fetch as jest.Mock).mockResolvedValue({
+    
+    global.fetch = jest.fn().mockResolvedValue({
       ok: true,
       json: async () => [
-        { session_id: 'session-123', title: 'Dermatology Case Notes Analysis' },
-        { session_id: 'session-456', title: 'Radiology Context Evaluation' }
+        { id: 'session-123', title: 'Dermatology Case Notes Analysis' },
+        { id: 'session-456', title: 'Radiology Context Evaluation' }
       ]
     });
 
-    render(<Sidebar collapsed={false} onToggle={jest.fn()} />);
+    (usePathname as jest.Mock).mockReturnValue('/chat/session-123');
+  });
 
-    expect(screen.getByText('New Analysis')).toBeInTheDocument();
+  it('renders chat action links, workspace buttons, and historical item nodes accurately', async () => {
+    (useAuth as jest.Mock).mockReturnValue({
+      user: { id: 'u1', name: 'Dr. Negil Babu' },
+      loading: false
+    });
 
-    // Verify asynchronous chat history items are pulled from the server and rendered cleanly
+    await act(async () => {
+      render(<Sidebar collapsed={false} onToggle={jest.fn()} onNewChat={mockOnNewChat} />);
+    });
+
+    expect(screen.getByText('+ New Chat')).toBeInTheDocument();
+
     await waitFor(() => {
       expect(screen.getByText('Dermatology Case Notes Analysis')).toBeInTheDocument();
       expect(screen.getByText('Radiology Context Evaluation')).toBeInTheDocument();
     });
   });
 
-  it('triggers workspace redirection handlers when clicking the New Analysis layout link container', () => {
-    (global.fetch as jest.Mock).mockResolvedValue({ ok: true, json: async () => [] });
-    render(<Sidebar collapsed={false} onToggle={jest.fn()} />);
+  it('calls onNewChat when an authenticated user clicks the New Chat button', async () => {
+    (useAuth as jest.Mock).mockReturnValue({
+      user: { id: 'u1', name: 'Dr. Negil Babu' },
+      loading: false
+    });
 
-    const newAnalysisBtn = screen.getByText('New Analysis');
-    fireEvent.click(newAnalysisBtn);
-    expect(mockPush).toHaveBeenCalledWith('/');
+    await act(async () => {
+      render(<Sidebar collapsed={false} onToggle={jest.fn()} onNewChat={mockOnNewChat} />);
+    });
+
+    const newChatBtn = screen.getByText('+ New Chat');
+    await act(async () => {
+      fireEvent.click(newChatBtn);
+    });
+    
+    expect(mockOnNewChat).toHaveBeenCalledTimes(1);
+    expect(mockPush).not.toHaveBeenCalled();
+  });
+
+  it('redirects to the guest auth workspace route when an anonymous guest clicks the New Chat button', async () => {
+    // Simulate an unauthenticated anonymous guest session
+    (useAuth as jest.Mock).mockReturnValue({
+      user: null,
+      loading: false
+    });
+
+    await act(async () => {
+      render(<Sidebar collapsed={false} onToggle={jest.fn()} onNewChat={mockOnNewChat} />);
+    });
+
+    const newChatBtn = screen.getByText('+ New Chat');
+    await act(async () => {
+      fireEvent.click(newChatBtn);
+    });
+    
+    expect(mockPush).toHaveBeenCalledWith('/auth/guest');
+    expect(mockOnNewChat).not.toHaveBeenCalled();
   });
 });
