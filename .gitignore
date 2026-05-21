@@ -12,7 +12,14 @@ frontend/out/
 frontend/build/
 frontend/next-env.d.ts
 frontend/.env*.local
+node_modules/
 
+# Test Coverage Output
+coverage/
+
+# Next.js Build Output
+.next/
+out/
 # --- Cleanup of deleted/moved files ---
 # These appear as 'D' in your git changes
 frontend/src/package.json
