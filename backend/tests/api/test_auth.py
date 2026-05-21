@@ -106,7 +106,6 @@ def test_get_me(client, mock_user_obj):
 def test_change_password_google_account(client, mock_user_obj):
     mock_user_obj.provider = "google"
     client.app.dependency_overrides[get_current_verified_user] = lambda: mock_user_obj
-    # FIX: Changed from .post to .patch to align with the routing architecture definition
     response = client.patch("/auth/me/password", json={"current_password": "old", "new_password": "newpass123"})
     assert response.status_code == 403
 
@@ -128,3 +127,62 @@ def test_delete_account_gdpr(client, mocker, mock_user_obj):
     
     response = client.delete("/auth/me")
     assert response.status_code == 200
+
+def test_google_auth_new_user(client, mocker, mock_user_obj):
+    mocker.patch("app.api.auth.GOOGLE_CLIENT_ID", "dummy-id")
+    mocker.patch("google.oauth2.id_token.verify_oauth2_token", return_value={
+        "sub": "g-unique-123", "email": "google@user.com", "name": "Google User"
+    })
+    mocker.patch("google.auth.transport.requests.Request")
+    
+    mock_db = MagicMock()
+    mocker.patch("app.api.auth.SessionLocal", return_value=mock_db)
+    mock_db.query.return_value.filter.return_value.first.return_value = None
+    
+    mocker.patch("app.api.auth.create_user", return_value=mock_user_obj)
+    mocker.patch("app.api.auth.send_welcome_email")
+    mocker.patch("app.api.auth.create_access_token", return_value="g-jwt")
+    
+    response = client.post("/auth/google", json={"id_token": "valid_token", "session_id": "sess-guest"})
+    assert response.status_code == 200
+
+def test_google_auth_link_existing_user(client, mocker, mock_user_obj):
+    mocker.patch("app.api.auth.GOOGLE_CLIENT_ID", "dummy-id")
+    mocker.patch("google.oauth2.id_token.verify_oauth2_token", return_value={
+        "sub": "g-unique-123", "email": "google@user.com", "name": "Google User"
+    })
+    mocker.patch("google.auth.transport.requests.Request")
+    
+    mock_db = MagicMock()
+    mocker.patch("app.api.auth.SessionLocal", return_value=mock_db)
+    
+    # Link an existing user who registered via email first
+    mock_user_obj.google_id = None
+    mock_db.query.return_value.filter.return_value.first.return_value = mock_user_obj
+    mocker.patch("app.api.auth.create_access_token", return_value="g-jwt")
+    mocker.patch("app.services.database.claim_session_history")
+    
+    response = client.post("/auth/google", json={"id_token": "valid_token", "session_id": "sess-guest"})
+    assert response.status_code == 200
+    assert mock_user_obj.google_id == "g-unique-123"
+
+def test_google_auth_existing_user_linked(client, mocker, mock_user_obj):
+    """Test Google OAuth synchronization when an email record match exists but lacks google_id mapping."""
+    mocker.patch("app.api.auth.GOOGLE_CLIENT_ID", "configured-client-id")
+    mocker.patch("google.oauth2.id_token.verify_oauth2_token", return_value={
+        "sub": "g-id-999", "email": "test@test.com", "name": "Test User"
+    })
+    mocker.patch("google.auth.transport.requests.Request")
+    
+    mock_db = MagicMock()
+    mocker.patch("app.api.auth.SessionLocal", return_value=mock_db)
+    
+    # Simulate an account registered via standard email credentials that doesn't have a linked Google ID yet
+    mock_user_obj.google_id = None 
+    mock_db.query.return_value.filter.return_value.first.return_value = mock_user_obj
+    mocker.patch("app.api.auth.create_access_token", return_value="jwt")
+    
+    response = client.post("/auth/google", json={"id_token": "valid_token"})
+    assert response.status_code == 200
+    assert mock_user_obj.google_id == "g-id-999"
+    

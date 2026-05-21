@@ -17,7 +17,6 @@ def test_individual_template_builders():
     with patch("app.core.email._send") as mock_send:
         email.send_password_changed_email("user@test.com", "Negil")
         mock_send.assert_called_once()
-        # FIX: Matches your exact implementation phrasing: "successfully updated"
         assert "successfully updated" in mock_send.call_args[0][2]
 
 def test_send_email_unconfigured_log(caplog):
@@ -53,3 +52,26 @@ def test_send_email_port_587_tls(mock_smtp):
         email._send("target@test.com", "Test Title", "<body>Content</body>")
         mock_session.starttls.assert_called_once()
         mock_session.login.assert_called_once()
+
+def test_base_url_fallback():
+    """Verify frontend target address falls back dynamically if missing or compound strings."""
+    with patch("app.core.email.FRONTEND_URL", ""):
+        assert email._get_base_url() == "http://localhost:3000"
+    with patch("app.core.email.FRONTEND_URL", "https://one.com , https://two.com"):
+        assert email._get_base_url() == "https://one.com"
+
+def test_logo_url_fallbacks():
+    """Verify logo path switches dynamically depending on address conditions."""
+    with patch("app.core.email.CUSTOM_LOGO_URL", "https://explicit.com/logo.png"):
+        assert email._get_logo_url("http://any.com") == "https://explicit.com/logo.png"
+    with patch("app.core.email.CUSTOM_LOGO_URL", ""):
+        assert email._get_logo_url("http://localhost:3000") == "https://veritas.negilbabu.com/veritas.svg"
+
+@patch("smtplib.SMTP")
+def test_send_email_exception_handling(mock_smtp, caplog):
+    """Verify exception logger fires if transmission throws errors."""
+    with patch("app.core.email.SMTP_USER", "user@test.com"), \
+         patch("app.core.email.SMTP_PASSWORD", "secret"):
+        mock_smtp.side_effect = Exception("SMTP connection refused")
+        email._send("target@test.com", "Subject", "html")
+        assert "Failed to send to" in caplog.text
