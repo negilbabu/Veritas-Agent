@@ -2,7 +2,7 @@
 import { useState } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { useRouter } from 'next/navigation';
-import ConfirmModal from './ConfirmModal'; 
+import ConfirmModal from './ConfirmModal';
 
 interface ProfileModalProps {
   onClose: () => void;
@@ -15,7 +15,6 @@ export default function ProfileModal({ onClose }: ProfileModalProps) {
   const { user, logout, changePassword, updateRetention, deleteAccount } = useAuth();
   const [tab, setTab] = useState<Tab>('profile');
 
-  // New State for logout confirmation
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
 
   // Password change state
@@ -76,20 +75,32 @@ export default function ProfileModal({ onClose }: ProfileModalProps) {
   const handleLogoutConfirm = () => {
     logout();
     router.push('/auth/login');
-    onClose(); 
+    onClose();
   };
 
   const tabs: { key: Tab; label: string }[] = [
-    { key: 'profile',  label: 'Profile'   },
-    { key: 'security', label: 'Security'  },
-    { key: 'data',     label: 'My Data'   },
+    { key: 'profile',  label: 'Profile'  },
+    { key: 'security', label: 'Security' },
+    { key: 'data',     label: 'My Data'  },
+  ];
+
+  // ── password fields with stable id values for getByLabelText ──
+  const passwordFields = [
+    { id: 'current-pw', label: 'Current Password', value: currentPw, set: setCurrentPw },
+    { id: 'new-pw',     label: 'New Password',      value: newPw,     set: setNewPw     },
+    { id: 'confirm-pw', label: 'Confirm New',        value: confirmPw, set: setConfirmPw },
   ];
 
   return (
     <>
-      <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={onClose}>
-        <div className="bg-slate-900 border border-slate-700 rounded-2xl shadow-2xl w-full max-w-md overflow-hidden" onClick={e => e.stopPropagation()}>
-
+      <div
+        className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+        onClick={onClose}
+      >
+        <div
+          className="bg-slate-900 border border-slate-700 rounded-2xl shadow-2xl w-full max-w-md overflow-hidden"
+          onClick={e => e.stopPropagation()}
+        >
           {/* Header */}
           <div className="flex items-center justify-between px-5 py-4 border-b border-slate-800">
             <h2 className="text-sm font-bold text-slate-200">Account Settings</h2>
@@ -118,7 +129,7 @@ export default function ProfileModal({ onClose }: ProfileModalProps) {
           </div>
 
           <div className="p-5">
-            {/* ── Profile tab ── */}
+            {/* Profile tab */}
             {tab === 'profile' && (
               <div className="space-y-4">
                 <div className="flex items-center gap-3">
@@ -144,7 +155,6 @@ export default function ProfileModal({ onClose }: ProfileModalProps) {
                   </div>
                 )}
 
-                {/* UPDATED: Button now triggers the local state instead of immediate logout */}
                 <button
                   onClick={() => setShowLogoutConfirm(true)}
                   className="w-full flex items-center justify-center gap-2 text-xs text-slate-400 hover:text-red-400 bg-slate-800/50 hover:bg-red-500/10 border border-slate-700 hover:border-red-800/50 py-2.5 rounded-xl transition-all"
@@ -154,24 +164,32 @@ export default function ProfileModal({ onClose }: ProfileModalProps) {
               </div>
             )}
 
-            {/* ── Security tab ── */}
+            {/* Security tab */}
             {tab === 'security' && (
               <div>
                 {user?.provider !== 'email' ? (
                   <div className="bg-slate-800/50 rounded-xl p-4 text-center">
-                    <p className="text-sm text-slate-400">Password management is not available for Google accounts.</p>
+                    <p className="text-sm text-slate-400">
+                      Password management is not available for Google accounts.
+                    </p>
                   </div>
                 ) : (
                   <form onSubmit={handlePasswordChange} className="space-y-3">
-                    <p className="text-xs text-slate-500 mb-3">Choose a strong password of at least 8 characters. You'll receive a confirmation email after changing it.</p>
-                    {[
-                      { label: 'Current Password', value: currentPw, set: setCurrentPw },
-                      { label: 'New Password',      value: newPw,     set: setNewPw     },
-                      { label: 'Confirm New',        value: confirmPw, set: setConfirmPw },
-                    ].map(f => (
-                      <div key={f.label}>
-                        <label className="text-xs text-slate-400 font-medium mb-1.5 block">{f.label}</label>
+                    <p className="text-xs text-slate-500 mb-3">
+                      Choose a strong password of at least 8 characters. You&apos;ll receive a confirmation email after changing it.
+                    </p>
+
+                    {/* FIX: each label now has htmlFor matching the input id */}
+                    {passwordFields.map(f => (
+                      <div key={f.id}>
+                        <label
+                          htmlFor={f.id}
+                          className="text-xs text-slate-400 font-medium mb-1.5 block"
+                        >
+                          {f.label}
+                        </label>
                         <input
+                          id={f.id}
                           type="password"
                           value={f.value}
                           onChange={e => f.set(e.target.value)}
@@ -181,9 +199,23 @@ export default function ProfileModal({ onClose }: ProfileModalProps) {
                         />
                       </div>
                     ))}
-                    {pwError   && <p className="text-xs text-red-400 bg-red-950/40 border border-red-800/50 rounded-lg px-3 py-2">{pwError}</p>}
-                    {pwSuccess && <p className="text-xs text-emerald-400 bg-emerald-950/40 border border-emerald-800/50 rounded-lg px-3 py-2">Password changed successfully. A confirmation email has been sent.</p>}
-                    <button type="submit" disabled={pwLoading} className="w-full bg-blue-600 hover:bg-blue-500 text-white py-2.5 rounded-xl text-xs font-bold transition-all disabled:opacity-50">
+
+                    {pwError && (
+                      <p className="text-xs text-red-400 bg-red-950/40 border border-red-800/50 rounded-lg px-3 py-2">
+                        {pwError}
+                      </p>
+                    )}
+                    {pwSuccess && (
+                      <p className="text-xs text-emerald-400 bg-emerald-950/40 border border-emerald-800/50 rounded-lg px-3 py-2">
+                        Password changed successfully. A confirmation email has been sent.
+                      </p>
+                    )}
+
+                    <button
+                      type="submit"
+                      disabled={pwLoading}
+                      className="w-full bg-blue-600 hover:bg-blue-500 text-white py-2.5 rounded-xl text-xs font-bold transition-all disabled:opacity-50"
+                    >
                       {pwLoading ? 'Updating…' : 'Update Password'}
                     </button>
                   </form>
@@ -191,7 +223,7 @@ export default function ProfileModal({ onClose }: ProfileModalProps) {
               </div>
             )}
 
-            {/* ── Data tab (GDPR) ── */}
+            {/* Data tab (GDPR) */}
             {tab === 'data' && (
               <div className="space-y-5">
                 <div>
@@ -209,7 +241,10 @@ export default function ProfileModal({ onClose }: ProfileModalProps) {
                     <option value="365">1 year</option>
                     <option value="never">Keep indefinitely</option>
                   </select>
-                  <button onClick={handleRetentionSave} className="w-full bg-slate-700 hover:bg-slate-600 text-slate-200 py-2 rounded-xl text-xs font-medium transition-all">
+                  <button
+                    onClick={handleRetentionSave}
+                    className="w-full bg-slate-700 hover:bg-slate-600 text-slate-200 py-2 rounded-xl text-xs font-medium transition-all"
+                  >
                     {retSuccess ? '✓ Saved' : 'Save Preference'}
                   </button>
                 </div>
@@ -226,7 +261,9 @@ export default function ProfileModal({ onClose }: ProfileModalProps) {
                     placeholder={`Type ${user?.email} to confirm`}
                     className="w-full bg-slate-800 border border-red-900/50 text-slate-200 px-3 py-2.5 rounded-xl text-sm outline-none focus:ring-1 focus:ring-red-600 mb-2 placeholder:text-slate-600"
                   />
-                  {deleteError && <p className="text-xs text-red-400 mb-2">{deleteError}</p>}
+                  {deleteError && (
+                    <p className="text-xs text-red-400 mb-2">{deleteError}</p>
+                  )}
                   <button
                     onClick={handleDeleteAccount}
                     disabled={deleteLoading || deleteConfirm !== user?.email}
@@ -241,7 +278,6 @@ export default function ProfileModal({ onClose }: ProfileModalProps) {
         </div>
       </div>
 
-      {/* REUSABLE CONFIRMATION MODAL */}
       <ConfirmModal
         isOpen={showLogoutConfirm}
         onClose={() => setShowLogoutConfirm(false)}
@@ -253,16 +289,8 @@ export default function ProfileModal({ onClose }: ProfileModalProps) {
           </svg>
         }
         actions={[
-          {
-            label: "Sign Out",
-            variant: "danger",
-            onClick: handleLogoutConfirm
-          },
-          {
-            label: "Stay logged in",
-            variant: "ghost",
-            onClick: () => setShowLogoutConfirm(false)
-          }
+          { label: 'Sign Out',       variant: 'danger', onClick: handleLogoutConfirm          },
+          { label: 'Stay logged in', variant: 'ghost',  onClick: () => setShowLogoutConfirm(false) },
         ]}
       />
     </>
