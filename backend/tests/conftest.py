@@ -1,5 +1,6 @@
 import pytest
 from fastapi.testclient import TestClient
+from unittest.mock import MagicMock
 from app.main import app
 
 @pytest.fixture
@@ -13,7 +14,6 @@ def client():
 @pytest.fixture
 def mock_user_obj():
     """A helper fixture to create a dummy user for DB mocks."""
-    from unittest.mock import MagicMock
     user = MagicMock()
     user.id = "user-123"
     user.email = "test@test.com"

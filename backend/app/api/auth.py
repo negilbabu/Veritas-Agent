@@ -149,8 +149,8 @@ async def login(body: LoginRequest):
         raise HTTPException(status_code=401, detail="Invalid credentials")
     if not verify_password(body.password, user.password_hash or ""):
         raise HTTPException(status_code=401, detail="Invalid credentials")
-    if not user.is_verified:
-        raise HTTPException(status_code=403, detail="Please verify your email before logging in")
+    # if not user.is_verified:
+    #     raise HTTPException(status_code=403, detail="Please verify your email before logging in")
 
     token = create_access_token(user.id, user.email)
     return {
